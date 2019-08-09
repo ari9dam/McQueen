@@ -1,2 +1,2 @@
-# MAC
-A set of generic MCQ solver
+# <img src="https://www.google.com/url?sa=i&source=images&cd=&ved=2ahUKEwjx-sDX4fTjAhVQrJ4KHXUWB2wQjRx6BAgBEAQ&url=https%3A%2F%2Fimgbin.com%2Fpng%2FJjp8D3zp%2Flightning-mcqueen-mater-cars-2-pixar-png&psig=AOvVaw1Uw7pV3BotiGoOvFljJPb4&ust=1565404556805203" width="30"> Introduction <hr>
+McQueen is a mcq solving library that allows researchers and developers to train and test several existing MCQ solvers on custom mcq datasets.
