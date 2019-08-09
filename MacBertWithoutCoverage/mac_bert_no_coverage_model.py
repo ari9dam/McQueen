@@ -18,7 +18,7 @@ from allennlp.modules import FeedForward, InputVariationalDropout
 
 
 
-@Model.register("multi_bert_mcq_model")
+@Model.register("mac_bert_no_coverage")
 class BERTMultiSentenceNLI(Model):
     '''
        get the pooled output from ph batches of size b,size

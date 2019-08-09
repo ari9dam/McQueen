@@ -42,7 +42,7 @@ from allennlp.data.tokenizers import Token, Tokenizer
 #                          separator_token="[SEP]")
 
 
-@DatasetReader.register("multi_bert_mcq_reader")
+@DatasetReader.register("mac_bert_no_coverage")
 class MultiBERTMCQDatasetReader(DatasetReader):
 
     def __init__(self, tokenizer: Tokenizer,
