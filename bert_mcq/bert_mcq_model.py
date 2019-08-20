@@ -96,7 +96,7 @@ class BertForClassification(Model):
             A scalar loss to be optimised.
         """
 
-        debug = True
+        debug = False
         # shape: batch_size, num_choices, max_len
         input_ids = tokens["tokens"]
 

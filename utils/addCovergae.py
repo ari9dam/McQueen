@@ -23,25 +23,29 @@ def computeCoverage(premise,hypothesis):
 
 def add_coverage(f_problems,f_out):
 
-    problems = open(f_problems,'r').readlines()
+    problems = open(f_problems,'r',encoding="utf-8").readlines()
     out = open("coverage_"+f_out,'w')
 
     for sample in problems:
         data = json.loads(sample)
         premises = data["premises"]
         choices = data["choices"]
+        question = ""
+        if "question" in data:
+            question = data["question"] +" "
+
         if isinstance(premises[0],str):
             premises = [premises]*len(choices)
         coverage = []
         for premise,choice in zip(premises,choices):
             per_choice_coverage =[]
             for sentence in premise:
-                entity_coverage = computeCoverage(sentence,choice)
+                entity_coverage = computeCoverage(sentence,question+choice)
                 per_choice_coverage.append(entity_coverage)
             coverage.append(per_choice_coverage)
         data["coverage"] = coverage
 
         out.write(json.dumps(data)+"\n")
 
-add_coverage("../OBQA/mcq_abductive_train-7-test-obqa.jsonl","mcq_obqa_train.jsonl")
-add_coverage("../OBQA/mcq_abductive_val-7-test-obqa.jsonl","mcq_obqa_dev.jsonl")
+add_coverage("mcq_abductive_dev.jsonl","mcq_abductive_dev.jsonl")
+add_coverage("mcq_abductive_train.jsonl","mcq_abductive_train.jsonl")

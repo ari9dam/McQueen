@@ -16,11 +16,26 @@ from allennlp.data.tokenizers import Token, Tokenizer
 @DatasetReader.register("bert_mcq_reader")
 class BERTMCQDatasetReader(DatasetReader):
 
-    def __init__(self, tokenizer: Tokenizer=None,
-                 token_indexers: Dict[str, TokenIndexer]=None) -> None:
+    def __init__(self, tokenizer: Tokenizer,
+                 token_indexers: Dict[str, TokenIndexer],
+                 max_pieces: int = 512) -> None:
         super().__init__(lazy=True)
         self._token_indexers = token_indexers
         self._tokenizer = tokenizer
+        self._max_pieces = max_pieces
+
+    @staticmethod
+    def _truncate_tokens(tokens_a, tokens_b, max_length):
+        """
+        Truncate a from the start and b from the end until total is less than max_length.
+        At each step, truncate the longest one
+        """
+        while len(tokens_a) + len(tokens_b) > max_length:
+            if len(tokens_a)>0:
+                tokens_a.pop(0)
+            else:
+                tokens_b.pop()
+        return tokens_a, tokens_b
 
 
     def bert_features_from_qa(self, question: str, answer: str, context: str = None):
@@ -31,6 +46,7 @@ class BERTMCQDatasetReader(DatasetReader):
             context_tokens = self._tokenizer.tokenize(context)
             question_tokens = context_tokens + [sep_token] + question_tokens
         choice_tokens = self._tokenizer.tokenize(answer)
+        question_tokens, choice_tokens = self._truncate_tokens(question_tokens, choice_tokens, self._max_pieces - 3)
 
         tokens = [cls_token] + question_tokens + [sep_token] + choice_tokens + [sep_token]
         segment_ids = list(itertools.repeat(0, len(question_tokens) + 2)) + \
@@ -41,7 +57,8 @@ class BERTMCQDatasetReader(DatasetReader):
     def text_to_instance(self,  # type: ignore
                          premises: Union[List[str],List[List[str]]],
                          choices: List[str],
-                         label: int = None) -> Instance:
+                         label: int = None,
+                         question:str = None) -> Instance:
         number_of_choices = len(choices)
         if isinstance(premises[0],str):
             premises = [premises]*number_of_choices
@@ -60,7 +77,11 @@ class BERTMCQDatasetReader(DatasetReader):
 
             # join all premise sentences
             all_premise = " ".join(premise)
-            ph_tokens, ph_token_type_ids = self.bert_features_from_qa(question=all_premise,answer=hypothesis)
+            if question is None:
+                ph_tokens, ph_token_type_ids = self.bert_features_from_qa(question=all_premise,answer=hypothesis)
+            else:
+                ph_tokens, ph_token_type_ids = self.bert_features_from_qa(question=question,
+                                                                          context=all_premise, answer=hypothesis)
 
             #create a simple textfield for hypothesis
             tokens_field = TextField(ph_tokens, self._token_indexers)
@@ -96,26 +117,10 @@ class BERTMCQDatasetReader(DatasetReader):
 
                 premises = example["premises"]
                 choices = example["choices"]
+                question = example["question"] if "question" in example else None
 
-                yield self.text_to_instance(premises, choices, label)
+                yield self.text_to_instance(premises, choices, label,question)
 
 
-def main():
-    print("testing data reader")
-    reader = BERTMCQDatasetReader()
-    instance = reader.text_to_instance(["Phillamon sit on the snow-covered bench.", "Mary Loves Mia."], ["hey","hi"])
-
-    print(instance)
-    print({k: v.__class__.__name__ for k, v in instance.fields.items()})
-    instances = reader.read("AbductiveNLI/big_mcq_abductive_train.jsonl")
-    all_instance_fields_and_types: List[Dict[str, str]] = [{k: v.__class__.__name__
-                                                            for k, v in x.fields.items()}
-                                                           for x in instances]
-    print(all_instance_fields_and_types)
-    # Check all the field names and Field types are the same for every instance.
-    if not all([all_instance_fields_and_types[0] == x for x in all_instance_fields_and_types]):
-        print("You cannot construct a Batch with non-homogeneous Instances.")
-
-#main()
 
 

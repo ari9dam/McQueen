@@ -120,7 +120,8 @@ class BERTMultiSentenceNLI(Model):
         # batch_size, N_P
         average_link_mask,_ = torch.max(reduced_link_mask,dim=-1,keepdim=False)
         average_link_mask[average_link_mask==0] = 0.001
-        average_link_mask = average_link_mask.double().float().cuda()
+        cuda_device = self._get_prediction_device()
+        average_link_mask = average_link_mask.double().float().cuda(cuda_device)
         print(average_link_mask.size())
         link_max_summary,_ = replace_masked_values(
             link_maxpooled, average_link_mask.unsqueeze(-1), -1e7

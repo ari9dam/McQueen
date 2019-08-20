@@ -55,7 +55,8 @@ class BertMCQParallelReader(DatasetReader):
     def text_to_instance(self,  # type: ignore
                          premises: Union[List[str],List[List[str]]],
                          choices: List[str],
-                         label: int = None) -> Instance:
+                         label: int = None,
+                         question: str = None) -> Instance:
         number_of_choices = len(choices)
         if isinstance(premises[0],str):
             premises = [premises]*number_of_choices
@@ -74,7 +75,18 @@ class BertMCQParallelReader(DatasetReader):
             # two different segment_ids
             # join all premise sentences
             for sentence in premise:
-                ph_tokens, ph_token_type_ids = self.bert_features_from_qa(question=sentence,answer=hypothesis)
+                if question is None:
+                    ph_tokens, ph_token_type_ids = self.bert_features_from_qa(question=sentence,answer=hypothesis)
+                else:
+                    ph_tokens, ph_token_type_ids = self.bert_features_from_qa(question=question, context=sentence,
+                                                                              answer=hypothesis)
+                # create a simple textfield for hypothesis
+                tokens_field = TextField(ph_tokens, self._token_indexers)
+                per_choice_tokens.append(tokens_field)
+                per_choice_token_ids.append(SequenceLabelField(ph_token_type_ids, tokens_field))
+
+            if len(premise)==0 and question is not None:
+                ph_tokens, ph_token_type_ids = self.bert_features_from_qa(question=question, answer=hypothesis)
                 # create a simple textfield for hypothesis
                 tokens_field = TextField(ph_tokens, self._token_indexers)
                 per_choice_tokens.append(tokens_field)
@@ -112,5 +124,6 @@ class BertMCQParallelReader(DatasetReader):
 
                 premises = example["premises"]
                 choices = example["choices"]
+                question = example["question"] if "question" in example else None
 
-                yield self.text_to_instance(premises, choices, label)
+                yield self.text_to_instance(premises, choices, label,question)

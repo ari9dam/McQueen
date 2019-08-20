@@ -84,12 +84,3 @@ class MACSeqDatasetReader(DatasetReader):
 
                 yield self.text_to_instance(premise, hypothesis, label)
 
-def main():
-    print("testing data reader")
-    reader = MACSeqDatasetReader()
-    instance = reader.text_to_instance(["After doing so, ask the children what characteristics the non rolling objects have that the rolling objects don't have.","Let children experiment by rolling various objects down their ramps.","Lecture Demos: Roll different objects down a ramp again.","We then revisit the expression for the acceleration of an object rolling down a ramp.","The objects that do not roll should be put aside.","For example, children get to roll various objects down a ramp, to discover which object rolls best.","What objects were the most fun to watch as they rolled down the ramp?","If I want my students to understand that a rolling ball can be a force upon another object which would cause that object to move, I can position a block at the bottom of my ramp and ask, \"I wonder what will happen to the block when I roll my ball down the ramp?\"","Roll different objects down a ramp.","Experiment with balls and other objects to see which will roll down the ramps."], "Mary hates Mia.")
-    print(instance)
-    print(instance.__getitem__("metadata").metadata)
-
-
-#main()

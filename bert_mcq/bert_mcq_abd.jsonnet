@@ -1,8 +1,8 @@
-local train_size = 129974;
-local batch_size = 8;
-local grad_accumulate = 1;
+local train_size = 169654;
+local batch_size = 4;
+local grad_accumulate = 2;
 local num_epochs = 9;
-local bert_model = "bert-base-uncased";
+local bert_model = "bert-large-uncased";
 local seed = 18551;
 
 {
@@ -11,7 +11,7 @@ local seed = 18551;
     "pytorch_seed":seed,
 
     "dataset_reader": {
-        "type": "mac_bert_mcq_pairwise_reader",
+        "type": "bert_mcq_reader",
         "tokenizer": {
             "type": "bert-multinli",
             "pretrained_model": bert_model
@@ -22,20 +22,15 @@ local seed = 18551;
                 "pretrained_model": bert_model
             }
         },
-        "max_pieces":64
+        "max_pieces":68
     },
 
-    "train_data_path": "/home/amitra7/multihop/coverage_mcq_obqa_train.jsonl",
-    "validation_data_path": "/home/amitra7/multihop/coverage_mcq_obqa_dev.jsonl",
+    "train_data_path": "/home/amitra7/multihop/mcq_abductive_train.jsonl",
+    "validation_data_path": "/home/amitra7/multihop/mcq_abductive_dev.jsonl",
     "model": {
-        "type": "mac_bert_mcq_pairwise",
+        "type": "bert_mcq",
         "bert_model": bert_model,
-        "normalize_coverage": false,
-        "projection_dim":300,
-        "initializer": [
-            [".*linear_layers.*weight", {"type": "xavier_normal"}]
-        ]
-        //"dropout": 0.1
+        "dropout": 0.2
     },
     "iterator": {
         "type": "basic",
@@ -45,9 +40,9 @@ local seed = 18551;
 
     "optimizer": {
       "type": "bert_adam",
-      "weight_decay_rate": 0.01,
+      "weight_decay_rate": 0.009,
       "parameter_groups": [[["bias", "gamma", "beta"], {"weight_decay_rate": 0}]],
-      "lr": 2e-5
+      "lr": 2e-6
     },
     "learning_rate_scheduler": {
       "type": "slanted_triangular",

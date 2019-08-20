@@ -1,7 +1,7 @@
-local train_size = 129974;
+local train_size = 169654;
 local batch_size = 32;
 local grad_accumulate = 1;
-local num_epochs = 7;
+local num_epochs = 9;
 local bert_model = "bert-base-uncased";
 local seed = 18551;
 
@@ -32,7 +32,7 @@ local seed = 18551;
         "projection_dim":300,
         "initializer": [
             [".*linear_layers.*weight", {"type": "xavier_normal"}]
-        ]
+        ],
         "dropout": 0.2
     },
     "iterator": {
@@ -57,6 +57,7 @@ local seed = 18551;
     "num_serialized_models_to_keep": 2,
     "should_log_learning_rate": true,
     "num_epochs": num_epochs,
+    "grad_accumulate_epochs": grad_accumulate,
     "cuda_device": 0
   }
 }

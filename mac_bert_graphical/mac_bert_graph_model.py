@@ -141,7 +141,8 @@ class MACBert(Model):
             print(f"link_pooled.size()={link_pooled.size()}")
             print(f"summary.size()={summary.size()}")
         # batch_size, N_P
-        coverage_mask = (coverage!=0).double().float().cuda()
+        cuda_device = self._get_prediction_device()
+        coverage_mask = (coverage!=0).double().float().cuda(cuda_device)
         coverage_mask[coverage_mask==0] = 0.0001
         coverage_mask,_ = torch.max(torch.sum(coverage_mask,-1),dim=-1,keepdim=False)
 

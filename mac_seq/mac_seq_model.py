@@ -250,7 +250,8 @@ class MultiSentenceNLI(Model):
         key_similarity_matrix = self._matrix_attention(embedded_premise_keys, embedded_premise_keys)
         # compute mask
         key_mask = torch.bmm(reduced_premise_mask.unsqueeze(2), reduced_premise_mask.unsqueeze(1))
-        diagonal = torch.eye(max_number_of_premise_sens).cuda().unsqueeze(0)
+        cuda_device = self._get_prediction_device()
+        diagonal = torch.eye(max_number_of_premise_sens).cuda(cuda_device).unsqueeze(0)
         key_mask = key_mask - diagonal
         key_mask = torch.nn.functional.relu(key_mask)
 

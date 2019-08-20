@@ -56,6 +56,7 @@ local seed = 18551;
     "num_serialized_models_to_keep": 2,
     "should_log_learning_rate": true,
     "num_epochs": num_epochs,
+    "grad_accumulate_epochs": grad_accumulate,
     "cuda_device": 0
   }
 }
