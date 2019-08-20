@@ -50,7 +50,7 @@ McQueen is a MCQ solving library that allows researchers and developers to train
 </tr>
 </table>
 
-### Hugging face Moduls
+### HuggingFace Modules
 <table>
 <tr>
     <td><b> bert-mcq-concat </b></td>
@@ -78,7 +78,7 @@ To run the huggingface models
 4. git checkout the repo in your agave host
 5. run launch gpu to get a host with multiple gpus 
     
- # training
+ # Training
  The training data should be in the format that is mentioned in the [doc](https://docs.google.com/document/d/1asswWYl_qG3sA97IMrv25k46Ueu4ujysDls6vIUX6Jk/)
  
  There are three models as of now, namely bert-mcq-concat, bert-mcq-parallel-max, bert-mcq-weighted-average
