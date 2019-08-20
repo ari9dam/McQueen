@@ -72,8 +72,8 @@ McQueen is a MCQ solving library that allows researchers and developers to train
 
 # Setup
 To run the huggingface models 
-1. conda create --name <env-name> python=3.6
-2. source activate <env-name>
+1. conda create --name env-name python=3.6
+2. source activate env-name
 3. pip install pytorch-transformers
 4. git checkout the repo in your agave host
 5. run launch gpu to get a host with multiple gpus 
