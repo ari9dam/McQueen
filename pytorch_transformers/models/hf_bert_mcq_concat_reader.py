@@ -45,9 +45,11 @@ class BertMCQConcatReader:
                          premises: List[List[str]],
                          choices: List[str],
                          question: str = None):
-
+        debug = True
         tokens = []
         token_type_ids = []
+        if isinstance(premises,str):
+            premises = [premises]
         if isinstance(premises[0], str):
             premises = [premises] * len(choices)
         for premise, hypothesis in zip(premises, choices):
@@ -58,6 +60,7 @@ class BertMCQConcatReader:
             # ph: [cls]all_premise[sep]hypothesis[sep]
             # two different segment_ids
             # join all premise sentences
+
             concatenated_premise = " ".join(premise)
 
             if question is None:
@@ -69,6 +72,10 @@ class BertMCQConcatReader:
                                                                           question=question,
                                                                           context=concatenated_premise,
                                                                           answer=hypothesis)
+            if debug:
+                print(f"Premise: {premise}, Hypothesis :{hypothesis}")
+                print(f"Concatenated Premise: {concatenated_premise}")
+                print(f"Tokens : {ph_tokens}, TokenIds: {ph_token_type_ids}")
             # tokenize
             input_ids = tokenizer.convert_tokens_to_ids(ph_tokens)
             # Zero-pad up to the sequence length.
@@ -126,6 +133,7 @@ def main():
     print(len(out))
     tokens, segs, masks, labels = out[0]
     print(tokens.size())
+    print(tokens)
     print(segs)
     print(masks)
     print(labels.size()) # shoud be 0

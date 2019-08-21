@@ -194,17 +194,17 @@ def main():
     tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
     data_reader = None
     if args.mcq_model == 'bert-mcq-parallel-max':
-        model = BertMCQParallel.from_pretrained(args.bert_model, dropout = args.dropout,
+        model = BertMCQParallel.from_pretrained(args.bert_model,
                                                 cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                        'distributed_{}'.format(args.local_rank)))
         data_reader = BertMCQParallelReader()
     elif args.mcq_model == 'bert-mcq-concat':
-        model = BertMCQConcat.from_pretrained(args.bert_model, dropout = args.dropout,
+        model = BertMCQConcat.from_pretrained(args.bert_model,
                                                 cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                        'distributed_{}'.format(args.local_rank)))
         data_reader = BertMCQConcatReader()
     elif args.mcq_model == 'bert-mcq-weighted-sum':
-        model = BertMCQWeightedSum.from_pretrained(args.bert_model, dropout = args.dropout,
+        model = BertMCQWeightedSum.from_pretrained(args.bert_model,
                                                    tie_weights = args.tie_weights_weighted_sum,
                                                    cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                           'distributed_{}'.format(args.local_rank)))
@@ -236,7 +236,7 @@ def main():
 
         # Prepare optimizer
         # Prepare optimizer and schedule (linear warmup and decay)
-        no_decay = ['bias', 'LayerNorm.weight']
+        no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
         optimizer_grouped_parameters = [
             {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
              'weight_decay': args.weight_decay},
@@ -292,7 +292,7 @@ def main():
             acc = 0
             for step, batch in enumerate(tq):
                 batch = tuple(t.to(device) for t in batch)
-                input_ids, input_mask, segment_ids, label_ids = batch
+                input_ids, segment_ids, input_mask, label_ids = batch
                 outputs = model(input_ids, segment_ids, input_mask, label_ids)
                 loss = outputs[0]
                 logits = outputs[1]
@@ -335,7 +335,7 @@ def main():
                     eval_loss, eval_accuracy = 0, 0
                     nb_eval_steps, nb_eval_examples = 0, 0
                     etq = tqdm(eval_dataloader, desc="Validating")
-                    for input_ids, input_mask, segment_ids, label_ids in etq:
+                    for input_ids, segment_ids, input_mask, label_ids in etq:
                         input_ids = input_ids.to(device)
                         input_mask = input_mask.to(device)
                         segment_ids = segment_ids.to(device)

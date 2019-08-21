@@ -32,10 +32,10 @@ logger = logging.getLogger(__name__)
 
 
 class BertMCQWeightedSum(BertPreTrainedModel):
-    def __init__(self, config,  tie_weights):
+    def __init__(self, config, dropout, tie_weights):
         super(BertMCQWeightedSum, self).__init__(config)
-        self.bert = BertModel(config)
-        self._dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.bert_model = BertModel(config)
+        self._dropout = nn.Dropout(dropout)
         self._classification_layer = nn.Linear(config.hidden_size, 1)
         if tie_weights is True:
             self._weight_layer = self._classification_layer
@@ -57,7 +57,7 @@ class BertMCQWeightedSum(BertPreTrainedModel):
         flat_attention_mask = input_mask.view(-1, input_mask.size(-1))
 
         # shape: batch_size*num_choices*max_premise_perchoice, hidden_dim
-        _, pooled_ph = self.bert(input_ids=flat_input_ids,
+        _, pooled_ph = self.bert_model(input_ids=flat_input_ids,
                                        token_type_ids=flat_token_type_ids,
                                        attention_mask=flat_attention_mask)
 

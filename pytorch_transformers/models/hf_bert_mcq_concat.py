@@ -32,10 +32,10 @@ logger = logging.getLogger(__name__)
 
 
 class BertMCQConcat(BertPreTrainedModel):
-    def __init__(self, config, dropout):
+    def __init__(self, config):
         super(BertMCQConcat, self).__init__(config)
-        self.bert_model = BertModel(config)
-        self._dropout = nn.Dropout(dropout)
+        self.bert = BertModel(config)
+        self._dropout = nn.Dropout(config.hidden_dropout_prob)
         self._classification_layer = nn.Linear(config.hidden_size, 1)
         self.apply(self.init_weights)
 
@@ -58,17 +58,19 @@ class BertMCQConcat(BertPreTrainedModel):
             print(f"flat_attention_mask = {flat_attention_mask}")
 
         # shape: batch_size*num_choices, hidden_dim
-        _, pooled = self.bert_model(input_ids=flat_input_ids,
+        _, pooled = self.bert(input_ids=flat_input_ids,
                                     token_type_ids=flat_token_type_ids,
                                     attention_mask=flat_attention_mask)
         if debug:
             print(f"pooled = {pooled}")
+            print(f"labels = {labels}")
 
         pooled = self._dropout(pooled)
 
         # apply classification layer
         # shape: batch_size*num_choices, 1
         logits = self._classification_layer(pooled)
+
         if debug:
             print(f"logits = {logits}")
 
