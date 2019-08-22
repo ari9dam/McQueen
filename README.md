@@ -85,7 +85,28 @@ To run the huggingface models
  
  Here is a sample run command to train bert-mcq-concat model with bert-large-whole-word-uncased :
  
+1. Running bert-mcq-concat
  ```
   nohup python hf_trainer.py --training_data_path mcq_abductive_train.jsonl --validation_data_path mcq_abductive_dev.jsonl  --mcq_model bert-mcq-concat --bert_model bert-large-uncased-whole-word-masking --output_dir ./serdir_bertlgww_concat_2e5_abd --num_train_epochs 4 --train_batch_size 64  --do_eval --do_train --max_seq_length 68 --do_lower_case --gradient_accumulation_steps 1  --learning_rate 2e-6 --weight_decay 0.009  --eval_freq 1000 --warmup_steps 250 &> bertlgww_concat_2e5_009_abd.out
 ```
+2. Running bert-mcq-parallel-max
+```
+nohup python hf_trainer.py --training_data_path mcq_abductive_train.jsonl --validation_data_path mcq_abductive_dev.jsonl  --mcq_model bert-mcq-concat --bert_model bert-large-uncased-whole-word-masking --output_dir ./serdir_bertlgww_concat_2e5_abd --num_train_epochs 4 --train_batch_size 64  --do_eval --do_train --max_seq_length 68 --do_lower_case --gradient_accumulation_steps 1  --learning_rate 2e-6 --weight_decay 0.009  --eval_freq 1000 --warmup_steps 250
+```
+3. Running simple sum model
+```
+nohup python hf_trainer.py --training_data_path mcq_sc_sim_train.jsonl --validation_data_path mcq_sc_sim_dev.jsonl  --mcq_model bert-mcq-simple-sum  --bert_model bert-large-uncased-whole-word-masking --output_dir ./serdir_bertlgww_simple_sum_4e6_001_social --num_train_epochs 4 --train_batch_size 16  --do_eval --do_train --max_seq_length 68 --do_lower_case --gradient_accumulation_steps 1 --eval_freq 500 --learning_rate 4e-6  --warmup_steps 400 --weight_decay 0.001
+ ```
+ 
+4. Running Weighted sum model with ( with tied weights )
+```
+nohup python hf_trainer.py --training_data_path mcq_sc_sim_train.jsonl --validation_data_path mcq_sc_sim_dev.jsonl  --mcq_model bert-mcq-weighted-sum  --tie_weights_weighted_sum --bert_model bert-large-uncased-whole-word-masking --output_dir ./serdir_bertlgww_simple_sum_4e6_001_social --num_train_epochs 4 --train_batch_size 16  --do_eval --do_train --max_seq_length 68 --do_lower_case --gradient_accumulation_steps 1 --eval_freq 500 --learning_rate 4e-6  --warmup_steps 400 --weight_decay 0.001
+ ```
+ 
+5. Running weighted sum without tied weights
+```
+nohup python hf_trainer.py --training_data_path mcq_sc_sim_train.jsonl --validation_data_path mcq_sc_sim_dev.jsonl  --mcq_model bert-mcq-weighted-sum  --bert_model bert-large-uncased-whole-word-masking --output_dir ./serdir_bertlgww_simple_sum_4e6_001_social --num_train_epochs 4 --train_batch_size 16  --do_eval --do_train --max_seq_length 68 --do_lower_case --gradient_accumulation_steps 1 --eval_freq 500 --learning_rate 4e-6  --warmup_steps 400 --weight_decay 0.001
+ ```
+
+
 Please see the file hf_trainer.py to read the meaning and the default value of the parameters.
