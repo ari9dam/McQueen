@@ -31,16 +31,12 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 logger = logging.getLogger(__name__)
 
 
-class BertMCQWeightedSum(BertPreTrainedModel):
-    def __init__(self, config,  tie_weights):
-        super(BertMCQWeightedSum, self).__init__(config)
+class BertMCQSimpleSum(BertPreTrainedModel):
+    def __init__(self, config):
+        super(BertMCQSimpleSum, self).__init__(config)
         self.bert = BertModel(config)
         self._dropout = nn.Dropout(config.hidden_dropout_prob)
         self._classification_layer = nn.Linear(config.hidden_size, 1)
-        if tie_weights is True:
-            self._weight_layer = self._classification_layer
-        else:
-            self._weight_layer = nn.Linear(config.hidden_size, 1)
         self.apply(self.init_weights)
 
     def forward(self,  # type: ignore
@@ -61,30 +57,17 @@ class BertMCQWeightedSum(BertPreTrainedModel):
                                        token_type_ids=flat_token_type_ids,
                                        attention_mask=flat_attention_mask)
 
-        pooled_ph = self._dropout(pooled_ph)
-
-        # apply weighting layer
-        weights = self._weight_layer(pooled_ph)
-
-        # multiply each element by the corresponding scores
-        weighted_ph = pooled_ph * weights
-
         if debug:
             print(f"input_ids.size() = {input_ids.size()}")
             print(f"token_type_ids.size() = {token_type_ids.size()}")
             print(f"pooled_ph.size() = {pooled_ph.size()}")
-            print(f"weighted_ph.size() = {weighted_ph.size()}")
 
-        #reshape: batch*num_choices, number_of_premises, hidden_dim
-        weighted_ph = weighted_ph.view(-1,input_ids.size(2),pooled_ph.size(1))
-        if debug:
-            print(f"weighted_ph.size() = {weighted_ph.size()}")
-        weighted_ph = torch.sum(weighted_ph,1)
-        if debug:
-            print(f"weighted_ph.size() = {weighted_ph.size()}")
+        pooled_ph = self._dropout(pooled_ph)
+        pooled_ph = pooled_ph.view(-1,input_ids.size(2),pooled_ph.size(-1))
+        summed_ph = torch.sum(pooled_ph,1)
 
         #apply classification layer
-        logits = self._classification_layer(weighted_ph)
+        logits = self._classification_layer(summed_ph)
 
         if debug:
             print(f"logits.size() = {logits.size()}")
@@ -92,11 +75,9 @@ class BertMCQWeightedSum(BertPreTrainedModel):
         # shape: batch_size,num_choices
         reshaped_logits = logits.view(-1, input_ids.size(1))
         if debug:
-            print(f"reshaped_logits = {reshaped_logits.size()}")
-            print(f"labels = {labels.size()}")
+            print(f"reshaped_logits = {reshaped_logits}")
 
-
-        outputs = (reshaped_logits,)
+        outputs = (reshaped_logits, )
 
         if labels is not None:
             loss_fct = CrossEntropyLoss()

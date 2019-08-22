@@ -24,6 +24,8 @@ from util import cleanup_global_logging,prepare_global_logging
 from hf_bert_mcq_concat import BertMCQConcat
 from hf_bert_mcq_concat_reader import BertMCQConcatReader
 from hf_bert_mcq_weighted_sum import BertMCQWeightedSum
+from hf_bert_mcq_simple_sum import BertMCQSimpleSum
+from hf_bert_mcq_mac import BertMCQMAC
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -206,6 +208,17 @@ def main():
     elif args.mcq_model == 'bert-mcq-weighted-sum':
         model = BertMCQWeightedSum.from_pretrained(args.bert_model,
                                                    tie_weights = args.tie_weights_weighted_sum,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = BertMCQParallelReader()
+    elif args.mcq_model == 'bert-mcq-simple-sum':
+        model = BertMCQSimpleSum.from_pretrained(args.bert_model,
+
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = BertMCQParallelReader()
+    elif args.mcq_model == 'bert-mcq-mac':
+        model = BertMCQMAC.from_pretrained(args.bert_model,
                                                    cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                           'distributed_{}'.format(args.local_rank)))
         data_reader = BertMCQParallelReader()
