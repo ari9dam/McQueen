@@ -62,12 +62,13 @@ class BertMCQWeightedSum(BertPreTrainedModel):
                                        attention_mask=flat_attention_mask)
 
         pooled_ph = self._dropout(pooled_ph)
-
+        pooled_ph  = pooled_ph.view(-1,input_ids.size(2),pooled_ph.size(1))
         # apply weighting layer
         weights = self._weight_layer(pooled_ph)
-
+        weights = weights.view(-1,input_ids.size(2))
+        weights = torch.nn.functional.softmax(weights, dim=-1)
         # multiply each element by the corresponding scores
-        weighted_ph = pooled_ph * weights
+        weighted_ph = pooled_ph * weights.unsqueeze(-1)
 
         if debug:
             print(f"input_ids.size() = {input_ids.size()}")
@@ -75,8 +76,6 @@ class BertMCQWeightedSum(BertPreTrainedModel):
             print(f"pooled_ph.size() = {pooled_ph.size()}")
             print(f"weighted_ph.size() = {weighted_ph.size()}")
 
-        #reshape: batch*num_choices, number_of_premises, hidden_dim
-        weighted_ph = weighted_ph.view(-1,input_ids.size(2),pooled_ph.size(1))
         if debug:
             print(f"weighted_ph.size() = {weighted_ph.size()}")
         weighted_ph = torch.sum(weighted_ph,1)

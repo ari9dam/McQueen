@@ -403,10 +403,8 @@ def main():
                         + _show_runtime(epoch_end_time - epoch_start_time))
 
         # Does this even make sense to output?
-        result = {'eval_loss': eval_loss,
-                  'eval_accuracy': eval_accuracy,
+        result = {'eval_accuracy': best_acc,
                   'global_step': global_step,
-                  'loss': tr_loss / global_step,
                   'best_epoch':best_epoch}
         cleanup_global_logging(stdout_handler)
         output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
