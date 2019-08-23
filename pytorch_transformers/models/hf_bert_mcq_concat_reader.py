@@ -45,7 +45,7 @@ class BertMCQConcatReader:
                          premises: List[List[str]],
                          choices: List[str],
                          question: str = None):
-        debug = True
+        debug = False
         tokens = []
         token_type_ids = []
         if isinstance(premises,str):
