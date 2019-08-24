@@ -91,7 +91,7 @@ To run the huggingface models
 ```
 2. Running bert-mcq-parallel-max
 ```
-nohup python hf_trainer.py --training_data_path mcq_abductive_train.jsonl --validation_data_path mcq_abductive_dev.jsonl  --mcq_model bert-mcq-concat --bert_model bert-large-uncased-whole-word-masking --output_dir ./serdir_bertlgww_concat_2e5_abd --num_train_epochs 4 --train_batch_size 64  --do_eval --do_train --max_seq_length 68 --do_lower_case --gradient_accumulation_steps 1  --learning_rate 2e-6 --weight_decay 0.009  --eval_freq 1000 --warmup_steps 250
+nohup python hf_trainer.py --training_data_path mcq_abductive_train.jsonl --validation_data_path mcq_abductive_dev.jsonl  --mcq_model bert-mcq-parellel-max --bert_model bert-large-uncased-whole-word-masking --output_dir ./serdir_bertlgww_concat_2e5_abd --num_train_epochs 4 --train_batch_size 64  --do_eval --do_train --max_seq_length 68 --do_lower_case --gradient_accumulation_steps 1  --learning_rate 2e-6 --weight_decay 0.009  --eval_freq 1000 --warmup_steps 250
 ```
 3. Running simple sum model
 ```
