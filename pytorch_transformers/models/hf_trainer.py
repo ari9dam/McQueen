@@ -374,10 +374,11 @@ def main():
 
                     eval_loss = eval_loss / nb_eval_steps
                     eval_accuracy = eval_accuracy / nb_eval_examples
-                    logger.info("\t\t\t|   Training |  Validation")
-                    logger.info("accuracy\t|    %.4f"%(acc / nb_tr_examples)+
+                    logger.info(f"epoch, step | {epoch_index}, {step}")
+                    logger.info("            |   Training |  Validation")
+                    logger.info("accuracy    |   %.4f"%(acc / nb_tr_examples)+
                                 "  |   %.4f"%eval_accuracy)
-                    logger.info("loss\t|    %.4f" % (tr_loss / nb_tr_steps) +
+                    logger.info("loss        |   %.4f" % (tr_loss / nb_tr_steps) +
                                 "  |   %.4f" % eval_loss)
                     best_acc = max(best_acc, eval_accuracy)
 

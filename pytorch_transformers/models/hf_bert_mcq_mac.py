@@ -113,7 +113,8 @@ class BertMCQMAC(BertPreTrainedModel):
                                                                                 input_ids.size(-2),input_ids.size(-2))
         # shape: batch_size*num_choices, max_premise_per_choice
         link_strength_max,_ = torch.max(link_strength,-1)
-        weights = ind_weights * (1 + link_strength_max)
+        # weights = ind_weights * (1 + link_strength_max)
+        weights = ind_weights -  (1 - ind_weights)* link_strength_max
         if debug:
             print(f"input_ids.size() = {input_ids.size()}")
             print(f"token_type_ids.size() = {weights.size()}")
