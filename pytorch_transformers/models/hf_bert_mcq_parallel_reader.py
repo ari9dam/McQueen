@@ -44,7 +44,8 @@ class BertMCQParallelReader:
                          max_seq_length: int,
                          premises: List[List[str]],
                          choices: List[str],
-                         question: str = None):
+                         question: str = None,
+                         max_number_premises:int = None):
 
         tokens = []
         token_type_ids = []
@@ -58,7 +59,9 @@ class BertMCQParallelReader:
             # ph: [cls]all_premise[sep]hypothesis[sep]
             # two different segment_ids
             # join all premise sentences
-            for sentence in premise:
+            if max_number_premises is None:
+                max_number_premises = len(premise)
+            for sentence in premise[0:max_number_premises]:
                 if question is None:
                     ph_tokens, ph_token_type_ids = self.bert_features_from_qa(tokenizer, max_seq_length,
                                                                               question=sentence, answer=hypothesis)
@@ -68,7 +71,6 @@ class BertMCQParallelReader:
                                                                               answer=hypothesis)
                 # tokenize
                 input_ids = tokenizer.convert_tokens_to_ids(ph_tokens)
-                input_mask = [1] * len(input_ids)
 
                 # Zero-pad up to the sequence length.
                 padding = [0] * (max_seq_length - len(input_ids))
@@ -77,7 +79,7 @@ class BertMCQParallelReader:
                 per_choice_tokens.append(input_ids)
                 per_choice_token_ids.append(ph_token_type_ids)
 
-            if len(premise) == 0 and question is not None:
+            if max_number_premises == 0 and question is not None:
                 ph_tokens, ph_token_type_ids = self.bert_features_from_qa(tokenizer, max_seq_length,
                                                                           question=question, answer=hypothesis)
                 input_ids = tokenizer.convert_tokens_to_ids(ph_tokens)
@@ -94,7 +96,7 @@ class BertMCQParallelReader:
 
         return (tokens, token_type_ids)
 
-    def read(self, file_path: str, tokenizer, max_seq_len: int):
+    def read(self, file_path: str, tokenizer, max_seq_len: int, max_number_premises:int=None):
         all_tokens = []
         all_segment_ids = []
         all_labels = []
@@ -112,7 +114,8 @@ class BertMCQParallelReader:
                 premises = example["premises"]
                 choices = example["choices"]
                 question = example["question"] if "question" in example else None
-                pp_tokens, pp_segment_ids = self.text_to_instance(tokenizer, max_seq_len, premises, choices, question)
+                pp_tokens, pp_segment_ids = self.text_to_instance(tokenizer, max_seq_len, premises, choices,
+                                                                  question, max_number_premises)
                 for per_choice_pp in pp_tokens:
                     max_number_premises = max(max_number_premises, len(per_choice_pp))
                 assert len(pp_tokens) == len(pp_segment_ids)

@@ -44,7 +44,8 @@ class BertMCQConcatReader:
                          max_seq_length: int,
                          premises: List[List[str]],
                          choices: List[str],
-                         question: str = None):
+                         question: str = None,
+                         max_number_premises=None):
         debug = False
         tokens = []
         token_type_ids = []
@@ -60,8 +61,9 @@ class BertMCQConcatReader:
             # ph: [cls]all_premise[sep]hypothesis[sep]
             # two different segment_ids
             # join all premise sentences
-
-            concatenated_premise = " ".join(premise)
+            if max_number_premises is None:
+                max_number_premises = len(premise)
+            concatenated_premise = " ".join(premise[0:max_number_premises])
 
             if question is None:
                 ph_tokens, ph_token_type_ids = self.bert_features_from_qa(tokenizer, max_seq_length,
@@ -87,7 +89,7 @@ class BertMCQConcatReader:
 
         return (tokens, token_type_ids)
 
-    def read(self, file_path: str, tokenizer, max_seq_len: int):
+    def read(self, file_path: str, tokenizer, max_seq_len: int, max_number_premises:int=None):
         all_tokens = []
         all_segment_ids = []
         all_labels = []
@@ -105,7 +107,8 @@ class BertMCQConcatReader:
                 premises = example["premises"]
                 choices = example["choices"]
                 question = example["question"] if "question" in example else None
-                pp_tokens, pp_segment_ids = self.text_to_instance(tokenizer, max_seq_len, premises, choices, question)
+                pp_tokens, pp_segment_ids = self.text_to_instance(tokenizer, max_seq_len, premises, choices, question,
+                                                                  max_number_premises)
 
                 assert len(pp_tokens) == len(pp_segment_ids)
                 all_tokens.append(pp_tokens)

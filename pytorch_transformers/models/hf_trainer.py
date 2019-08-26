@@ -154,6 +154,10 @@ def main():
     parser.add_argument('--tie_weights_weighted_sum',
                         action='store_true',
                         help="Whether to tie the weights for the weighted sum model")
+    parser.add_argument('--max_number_premises',
+                        type=int,
+                        default=None,
+                        help="Number of premise sentences to use at max")
     args = parser.parse_args()
 
     if args.local_rank == -1 or args.no_cuda:
@@ -229,14 +233,16 @@ def main():
     if args.do_train:
         # Prepare data loader
         # get data loader for train/dev
-        train_data = data_reader.read(args.training_data_path, tokenizer, args.max_seq_length)
+        train_data = data_reader.read(args.training_data_path, tokenizer, args.max_seq_length,
+                                      args.max_number_premises)
         if args.local_rank == -1:
             train_sampler = RandomSampler(train_data)
         else:
             train_sampler = DistributedSampler(train_data)
         train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size)
 
-        eval_data = data_reader.read(args.validation_data_path, tokenizer, args.max_seq_length)
+        eval_data = data_reader.read(args.validation_data_path, tokenizer, args.max_seq_length,
+                                      args.max_number_premises)
         eval_sampler = SequentialSampler(eval_data)
         eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
