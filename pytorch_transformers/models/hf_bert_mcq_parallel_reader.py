@@ -59,7 +59,7 @@ class BertMCQParallelReader:
             # ph: [cls]all_premise[sep]hypothesis[sep]
             # two different segment_ids
             # join all premise sentences
-            if max_number_premises is None:
+            if not max_number_premises:
                 max_number_premises = len(premise)
             for sentence in premise[0:max_number_premises]:
                 if question is None:
@@ -148,7 +148,7 @@ class BertMCQParallelReader:
 def main():
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
     reader = BertMCQParallelReader()
-    out = reader.read("dummy_data.jsonl", tokenizer, 20)
+    out = reader.read("dummy_data.jsonl", tokenizer, 20, None)
     print(len(out))
     tokens, segs, masks, labels = out[0]
     print(tokens.size())

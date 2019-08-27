@@ -61,7 +61,7 @@ class BertMCQConcatReader:
             # ph: [cls]all_premise[sep]hypothesis[sep]
             # two different segment_ids
             # join all premise sentences
-            if max_number_premises is None:
+            if not max_number_premises :
                 max_number_premises = len(premise)
             concatenated_premise = " ".join(premise[0:max_number_premises])
 
