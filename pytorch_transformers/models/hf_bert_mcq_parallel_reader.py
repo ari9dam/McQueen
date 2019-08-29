@@ -14,12 +14,12 @@ class BertMCQParallelReader:
     @staticmethod
     def _truncate_tokens(tokens_a, tokens_b, max_length):
         """
-        Truncate a from the start and b from the end until total is less than max_length.
+        Truncate a from the end and b from the end until total is less than max_length.
         At each step, truncate the longest one
         """
         while len(tokens_a) + len(tokens_b) > max_length:
             if len(tokens_a) > 0:
-                tokens_a.pop(0)
+                tokens_a.pop()
             else:
                 tokens_b.pop()
         return tokens_a, tokens_b

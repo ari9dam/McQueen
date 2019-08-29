@@ -19,7 +19,7 @@ class BertMCQConcatReader:
         """
         while len(tokens_a) + len(tokens_b) > max_length:
             if len(tokens_a) > 0:
-                tokens_a.pop(0)
+                tokens_a.pop()
             else:
                 tokens_b.pop()
         return tokens_a, tokens_b
