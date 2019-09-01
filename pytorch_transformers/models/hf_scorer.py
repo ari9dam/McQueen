@@ -223,17 +223,17 @@ def main():
             eval_loss = eval_loss / nb_eval_steps
             eval_accuracy = eval_accuracy / nb_eval_examples
 
-        cleanup_global_logging(stdout_handler)
-        output_score_file = os.path.join(args.output_data_path,"score_file.txt")
-        output_only_preds = os.path.join(args.output_data_path,"predictions.txt")
-        output_with_labels = os.path.join(args.output_data_path,"pred_labels.txt")
-        with open(output_score_file, "w") as scorefile:
-            for score in scores:
-                scorefile.write(str(score)+"\n")
-        with open(output_only_preds,"w") as onlypreds, open(output_with_labels,"w") as predlabels:
-            for pred,label in zip(prediction_list,gold_labels):
-                onlypreds.write(str(pred)+"\n")
-                predlabels.write(str(pred)+"\t"+str(label)+"\t"+str(pred==label)+"\n")
+    cleanup_global_logging(stdout_handler)
+    output_score_file = os.path.join(args.output_data_path,"score_file.txt")
+    output_only_preds = os.path.join(args.output_data_path,"predictions.txt")
+    output_with_labels = os.path.join(args.output_data_path,"pred_labels.txt")
+    with open(output_score_file, "w") as scorefile:
+        for score in scores:
+            scorefile.write(str(score)+"\n")
+    with open(output_only_preds,"w") as onlypreds, open(output_with_labels,"w") as predlabels:
+        for pred,label in zip(prediction_list,gold_labels):
+            onlypreds.write(str(pred)+"\n")
+            predlabels.write(str(pred)+"\t"+str(label)+"\t"+str(pred==label)+"\n")
             
 
 if __name__ == "__main__":
