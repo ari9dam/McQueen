@@ -106,15 +106,15 @@ def main():
                         type=int,
                         default=None,
                         help="Number of premise sentences to use at max")
+    parser.add_argument("--local_rank",
+                        type=int,
+                        default=-1,
+                        help="local_rank for distributed training on gpus")
     args = parser.parse_args()
 
-    if args.no_cuda:
-        device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-        n_gpu = torch.cuda.device_count()
-    else:
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
-        n_gpu = 1
+    device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+    n_gpu = torch.cuda.device_count()
+
 
     if not os.path.exists(args.model_dir) and not os.listdir(args.model_dir):
         raise ValueError("Model directory ({}) doesnot exists.".format(args.model_dir))
@@ -128,9 +128,7 @@ def main():
 
     tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
     data_reader = None
-    
-    model_type= 
-    
+        
     if args.mcq_model == 'bert-mcq-parallel-max':
         model = BertMCQParallel.from_pretrained(args.model_dir,
                                                 cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
