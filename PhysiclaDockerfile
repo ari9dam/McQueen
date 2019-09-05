@@ -51,5 +51,7 @@ RUN mkdir /results
 # Copy remaining code.
 COPY . .
 RUN mv run_model_physical.sh run_model.sh
+RUN chmod 777 run_model.sh
+
 
 CMD ["/bin/bash"]

@@ -16,7 +16,7 @@ except ImportError:
 # sentences and issues bulk insert commands to an Elasticsearch server running
 # on localhost.
 
-ELASTIC_SEARCH_URL = 'http://10.218.110.98:9200/wikihowsingle/sentence/_bulk'
+ELASTIC_SEARCH_URL = 'http://localhost:9200/wikihowsingle/sentence/_bulk'
 DOCUMENTS_PER_POST = 100000
 
 def sentences_to_elasticsearch_payload(sentences):

@@ -4,6 +4,12 @@ import json
 import sys
 #parse val data
 
+
+import nltk
+nltk.download("stopwords")
+nltk.download("punkt")
+
+
 input_path = sys.argv[1]
 
 val_dict = []

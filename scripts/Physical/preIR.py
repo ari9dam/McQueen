@@ -7,6 +7,11 @@ import sys
 from tqdm import tqdm
 
 
+import nltk
+nltk.download("stopwords")
+nltk.download("punkt")
+
+
 from stop_words import get_stop_words
 from nltk.corpus import stopwords
 import string

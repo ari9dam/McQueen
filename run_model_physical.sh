@@ -12,7 +12,7 @@ cp scripts/Physical/* .
 
 cat wikihow_single_sent.txt | python insert_text_to_elasticsearch.py
 
-python preIR.py "dev.jsonl" preir_dev.tsv
+python preIR.py /data/physicaliqa.jsonl preir_dev.tsv
 
 # IR
 python ir_from_aristo.py preir_dev.tsv

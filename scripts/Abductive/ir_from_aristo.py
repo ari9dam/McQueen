@@ -13,7 +13,7 @@ class TextSearchSolver():
     scala solver
     """
     def __init__(self,                   # pylint: disable=too-many-arguments
-                 host: str="10.218.110.98",
+                 host: str="localhost",
                  port: int=9200,
                  index_name: str="roccombined",
                  field_name: str="body",

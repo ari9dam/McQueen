@@ -13,13 +13,13 @@ class TextSearchSolver():
     scala solver
     """
     def __init__(self,                   # pylint: disable=too-many-arguments
-                 host: str="10.218.110.98",
+                 host: str="localhost",
                  port: int=9200,
                  index_name: str="wikihowsingle",
                  field_name: str="body",
                  topn: int=100) -> None:
         self.client = Elasticsearch([host], port=port)
-        print(self.client)
+        #print(self.client)
         self.fields = [field_name]
         self.index_name = index_name
         self.topn = topn
@@ -36,7 +36,7 @@ class TextSearchSolver():
         """get the score from elasticsearch"""
         query_text = query
         query = Q('multi_match', query=query_text, fields=self.fields)
-        print (query)
+        #print (query)
         search = Search(using=self.client, index=self.index_name).query(query)[:self.topn]
         response = search.execute()
         #print(response)
@@ -69,7 +69,7 @@ if __name__ == "__main__":
             if i < cont:
                 continue
             searchQuery = " ".join(list(set(row[-1].lower().split(" "))))
-            print("SearchQ:",searchQuery,"ROW:",row,"LENGTH:",len(row))
+            #print("SearchQ:",searchQuery,"ROW:",row,"LENGTH:",len(row))
             row[-1]=row[-1].strip()
             out = solver.search(searchQuery)
             row.append(out)

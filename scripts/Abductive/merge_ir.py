@@ -51,7 +51,6 @@ def create_merged_facts_map(df):
                 current_score = merged_map[qidx]['facts'][fact]
                 score = max(score,current_score)
             merged_map[qidx]['facts'][fact] = score
-            get_doc(fact)
             
     sorted_merged_map = {}
     for qid in tqdm(merged_map.keys(),desc="Sorting:"):
@@ -82,7 +81,6 @@ def create_unmerged_facts_map(df):
             fact = tup[0]
             score = float(tup[1])
             unmap[qidx]['facts'][opt][fact]=score
-            get_doc(fact)
             
     sorted_merged_map = {}
     for qid in tqdm(unmap.keys(),desc="Sorting:"):
