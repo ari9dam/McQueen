@@ -12,7 +12,7 @@ import jsonlines
 
 
 import spacy
-nlp = spacy.load('en_core_web_lg',disable=["ner",])
+nlp = spacy.load('en_core_web_lg',disable=["ner","parser","tagger"])
 
 docmap = {}
 

@@ -1,17 +1,20 @@
 import jsonlines
 from tqdm import tqdm
 import json
-
+import sys
 #parse val data
+
+input_path = sys.argv[1]
+
 val_dict = []
-with jsonlines.open('dev.jsonl') as reader:
+with jsonlines.open(input_path) as reader:
     for obj in reader:
         val_dict.append(obj)
         
 val_labels = []
-with open("dev-labels.lst") as tlabels:
+with open(input_path) as tlabels:
     for line in tlabels.readlines():
-        val_labels.append(line.strip())
+        val_labels.append('1')
 
 #verify data
 mapto = {'1':"hyp1",'2':"hyp2"}
@@ -99,11 +102,11 @@ create_tsv_dataset(val_dict,val_labels,"devfinal.tsv")
 
 # csv.field_size_limit(sys.maxsize)
                 
-python ir_from_aristo.py devfinal.tsv
+# python ir_from_aristo.py devfinal.tsv
 #it will generate devfinal.tsv.out file
 
 #rereanked jsonl file
-python merge_ir.py mnli_simple
+# python merge_ir.py mnli_simple
 # this will generate devf.jsonl and devr.jsonl, both are same, use anyone.
 
 #Best model path: /scratch/srmishr1/Sunpower/2015_swt_5e6_001_11

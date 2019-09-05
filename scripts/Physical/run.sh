@@ -3,6 +3,8 @@
 #Set up SE
 #File : wikihow_single_sent.txt
 #https://drive.google.com/open?id=1CiFk4mYsQq1SyuuVQqFj51vAPoDn4V-P
+
+
 cat wikihow_single_sent.txt | python insert_text_to_elasticsearch.py #index= wikihowsingle
 
 # Dev data - dev.jsonl

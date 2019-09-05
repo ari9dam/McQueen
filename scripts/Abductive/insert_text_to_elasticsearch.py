@@ -17,7 +17,7 @@ except ImportError:
 # on localhost.
 #ELASTIC_SEARCH_URL = 'http://10.218.110.98:9200/rocn/sentence/_bulk' this one with id, rocn1 is without id, rocn2 is the new pattern with sentences, #rocnew is for entire story as arindam asked, roccombined is mix of all Kbs, rocarindam for 3 sentence pairs of arindam data, rocarida new as last one got messed up by repeatation.
 
-ELASTIC_SEARCH_URL = 'http://10.218.110.98:9200/roccombined/sentence/_bulk'
+ELASTIC_SEARCH_URL = 'http://localhost:9200/roccombined/sentence/_bulk'
 DOCUMENTS_PER_POST = 100000
 
 def sentences_to_elasticsearch_payload(sentences):

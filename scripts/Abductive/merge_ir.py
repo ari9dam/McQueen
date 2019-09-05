@@ -10,7 +10,7 @@ import jsonlines
 
 
 print("Loading Spacy")
-nlp = spacy.load('en_core_web_lg',disable=["ner",])
+nlp = spacy.load('en_core_web_lg',disable=["ner","parser","tagger"])
 
 def load_doc_map(path_to_docmap):
     pickle_in = open(path_to_docmap,"rb")
