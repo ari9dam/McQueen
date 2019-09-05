@@ -12,7 +12,7 @@ cp scripts/Social/* .
 
 cat atomic_knowledge_sentences.txt | python insert_text_to_elasticsearch_lemmatized.py
 
-python preprare_dataset.py val.jsonl
+python preprare_dataset.py /data/socialiqa.jsonl
 
 # IR
 python ir_from_aristo_lemmatized.py dev_ir_lemma.tsv
