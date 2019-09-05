@@ -342,14 +342,14 @@ def create_multinli_data_unique(merged_map,fname,typet):
     
 if __name__ == "__main__":
 
-    print("Initialize Doc Cache")
-    with open("atomic_knowledge_sentences.txt","r") as ifd:
-        flist = []
-        for line in ifd:
-            flist.append(line.strip())
-        print("Generating Docs")
-        for doc,fact in tqdm(zip(nlp.pipe(flist,batch_size=10000),flist),desc="Caching"):
-            docmap[fact]=doc
+    # print("Initialize Doc Cache")
+    # with open("atomic_knowledge_sentences.txt","r") as ifd:
+    #     flist = []
+    #     for line in ifd:
+    #         flist.append(line.strip())
+    #     print("Generating Docs")
+    #     for doc,fact in tqdm(zip(nlp.pipe(flist,batch_size=10000),flist),desc="Caching"):
+    #         docmap[fact]=doc
     
     typet = sys.argv[1]
     if typet == 'swag_simple':
