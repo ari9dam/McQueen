@@ -369,7 +369,7 @@ if __name__ == "__main__":
     elif typet == 'unique':
         create_multinli_unique("../data/train-lemma.tsv.out","../data/dev-lemma.tsv.out","train_l_u2","dev_l_u2","")
     elif typet == 'typed':
-        create_multinli("../data/train-lemma-type.tsv.out","../data/dev-lemma-type.tsv.out","train_typed","dev_typed","")
+        create_multinli("","dev_ir_lemma.tsv.out","","dev_typed","",no_train=True)
     elif typet == 'filtered':
         create_multinli_filtered("../data/train-lemma-type.tsv.out","../data/dev-lemma-type.tsv.out","train_filtered","dev_filtered","")
     elif typet == 'filt_uniq':
