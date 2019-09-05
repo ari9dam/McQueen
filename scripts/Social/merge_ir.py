@@ -298,9 +298,8 @@ def create_multinli_data(merged_map,fname,typet):
             facts.append( [tup[0] for tup in row['facts']['1'][0:10]])
             facts.append( [tup[0] for tup in row['facts']['2'][0:10]])
             passage = row['passage']
-            label = row['label']
             choices = [passage + " . " + row['answerlist'][0],passage + " . " + row['answerlist'][1],passage + " . " + row['answerlist'][2]]
-            writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":label})
+            writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":0})
             
             
 def create_multinli_data_unique(merged_map,fname,typet):
