@@ -28,7 +28,7 @@ python clean_dataset.py dev_typed.jsonl
 
 tar -zxvf trained_models/social_mac.tar
 
-python pytorch_transformers/models/hf_scorer.py --input_data_path dev_typed.jsonl   --eval_batch_size 1 --model_dir scratch/pbanerj6/social/social_mcq_mac_bertir_ranked_6_tw_50  --bert_model bert-large-uncased-whole-word-masking --mcq_model bert-mcq-mac  --output_data_path .
+python pytorch_transformers/models/hf_scorer.py --input_data_path dev_typed.jsonl   --max_number_premises 6 --max_seq_length 72 --eval_batch_size 1 --model_dir scratch/pbanerj6/social/social_mcq_mac_bertir_ranked_6_tw_50  --bert_model bert-large-uncased-whole-word-masking --mcq_model bert-mcq-mac  --output_data_path .
 
 python fix_preds.py
 
