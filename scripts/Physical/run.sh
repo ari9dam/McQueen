@@ -2,9 +2,11 @@
 
 #Set up SE
 #File : wikihow_single_sent.txt
-https://drive.google.com/open?id=1CiFk4mYsQq1SyuuVQqFj51vAPoDn4V-P
+#https://drive.google.com/open?id=1CiFk4mYsQq1SyuuVQqFj51vAPoDn4V-P
 cat wikihow_single_sent.txt | python insert_text_to_elasticsearch.py #index= wikihowsingle
 
+# Dev data - dev.jsonl
+#https://drive.google.com/open?id=15Rr8i92pbuBRQ3GyYZhL1neyQJaNqBIi
 
 # Prepare search Query
 # python preIR.py ../data/dev.jsonl ../data/dev-labels.lst preir_dev.tsv
