@@ -1,4 +1,11 @@
 
+
+#Set up SE
+#File : wikihow_single_sent.txt
+https://drive.google.com/open?id=1CiFk4mYsQq1SyuuVQqFj51vAPoDn4V-P
+cat wikihow_single_sent.txt | python insert_text_to_elasticsearch.py #index= wikihowsingle
+
+
 # Prepare search Query
 # python preIR.py ../data/dev.jsonl ../data/dev-labels.lst preir_dev.tsv
 python preIR.py "../../../data/dev.jsonl" preir_dev.tsv
@@ -11,6 +18,10 @@ python mergeIR.py preir_dev.tsv.out physical_merged_dev
 
 
 ### BEST MODEL WEIGHTED SUM physical_merged_dev.jsonl
+
+
+python hf_scorer.py --input_data_path ../../data/physical_merged_dev.jsonl --model_dir /scratch/kkpal/physical/noq/tiedws_128_9e-6_10865  --bert_model bert-large-uncased-whole-word-masking --mcq_model bert-mcq-weighted-sum  --tie_weights_weighted_sum --output_data_path /scratch/kkpal/physical/output
+
 
 # /scratch/kkpal/physical/noq/tiedws_128_9e-6_10865
 # mcq_model bert-mcq-weighted-sum  --tie_weights_weighted_sum 
