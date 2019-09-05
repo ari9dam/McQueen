@@ -15,6 +15,13 @@ stpwords =  set(stopwords.words('english'))
 import spacy
 nlp = spacy.load('en_core_web_lg',disable=["ner",])
 
+docmap = {}
+def get_doc(docs):
+    if docs in docmap:
+        return docmap[docs]
+    docmap[docs] = nlp(docs)
+    return docmap[docs]
+
 def get_verbs_adj(sent):
     doc = get_doc(sent)
     verbs_adj = []
