@@ -110,6 +110,11 @@ def main():
                         type=int,
                         default=-1,
                         help="local_rank for distributed training on gpus")
+    
+    parser.add_argument('--tie_weights_weighted_sum',
+                        action='store_true',
+                        help="Whether to tie the weights for the weighted sum model")
+    
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
