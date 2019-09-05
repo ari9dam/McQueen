@@ -28,19 +28,21 @@ def createIRFile(inpFile, outFile):
         csvin = csv.reader(csvin)
         next(csvin)
         for row in csvin:
-            if row[-1]=='1':
-                a1=0
-                a2=1
-            else:
-                a1=1
-                a2=0
+#             if row[-1]=='1':
+#                 a1=0
+#                 a2=1
+#             else:
+#                 a1=1
+#                 a2=0
 
-            s1query = row[0]+" "+row[2]
-            s2query = row[0]+" "+row[3]
+            s1query = row[1]+" "+row[2]
+            s2query = row[1]+" "+row[3]
             s1query = remove_stopwords(s1query)
             s2query = remove_stopwords(s2query)
-            sent1 = row[1]+":0"+"\t"+row[0]+"\t"+row[2]+"\t"+str(a1)+"\t"+s1query+"\n"
-            sent2 = row[1]+":1"+"\t"+row[0]+"\t"+row[3]+"\t"+str(a2)+"\t"+s2query+"\n"
+#             sent1 = row[0]+":0"+"\t"+row[0]+"\t"+row[2]+"\t"+str(a1)+"\t"+s1query+"\n"
+#             sent2 = row[0]+":1"+"\t"+row[0]+"\t"+row[3]+"\t"+str(a2)+"\t"+s2query+"\n"
+            sent1 = row[0]+":0"+"\t"+row[1]+"\t"+row[2]+"\t"+s1query+"\n"
+            sent2 = row[0]+":1"+"\t"+row[1]+"\t"+row[3]+"\t"+s2query+"\n"
             tsvout.write(sent1+sent2)
             
             

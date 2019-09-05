@@ -1,7 +1,7 @@
 
 # Prepare search Query
 # python preIR.py ../data/dev.jsonl ../data/dev-labels.lst preir_dev.tsv
-python preIR.py "../../../data/dev.jsonl" preir_dev.tsv
+python preIR.py ../data/dev.jsonl preir_dev.tsv
 
 # IR
 python ir_from_aristo.py preir_dev.tsv

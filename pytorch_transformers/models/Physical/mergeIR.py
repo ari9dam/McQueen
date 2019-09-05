@@ -71,8 +71,8 @@ def create_unmerged_facts_map(df):
             unmap[qidx]['facts'][opt]={}
         unmap[qidx]['passage'] = row['passage']
         unmap[qidx]['answerlist'].append(row['answer'])
-        if row['label'] == 1:
-            unmap[qidx]['label'] = row['qid'].split(":")[1]
+#         if row['label'] == 1:
+#             unmap[qidx]['label'] = row['qid'].split(":")[1]
         irfacts = ast.literal_eval(row['irfacts'])
         for tup in irfacts:
             fact = tup[0]
@@ -158,16 +158,16 @@ def create_kb_data_no_question(merged_map,fname,typet):
 #             choices = row['answerlist']
             passage = row['passage']
             choices = [passage+" "+eachans for eachans in row['answerlist']]
-            label = row['label']
-            writer.write({"id":qidx,"question":[],"premises":facts,"choices":choices,"gold_label":label})
-            
+#             label = row['label']
+#             writer.write({"id":qidx,"question":[],"premises":facts,"choices":choices,"gold_label":label})
+            writer.write({"id":qidx,"question":[],"premises":facts,"choices":choices})
             
             
 if __name__ == "__main__":
     
     dev_fn = sys.argv[1] # inp filename 
     outfilename = sys.argv[2] #out filename -- physical_dev_kb_noq_v2
-    dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+    dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','irkeys','irfacts'])
     dev_merged = create_unmerged_facts_map(dev_df)
     dev_merged_reranked = create_reranked_umap(dev_merged)
     create_kb_data_no_question(dev_merged_reranked,outfilename,"")
