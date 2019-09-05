@@ -344,7 +344,7 @@ def create_multinli_data_unique(merged_map,fname,typet):
 if __name__ == "__main__":
 
     print("Initialize Doc Cache")
-    with open("/home/pbanerj6/github/socialiqa/data/processed_atomic_knowledge_typed-v3.txt","r") as ifd:
+    with open("atomic_knowledge_sentences.txt","r") as ifd:
         flist = []
         for line in ifd:
             flist.append(line.strip())
