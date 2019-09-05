@@ -22,7 +22,7 @@ ELASTIC_SEARCH_URL = 'http://localhost:9200/atomic_lemma/sentence/_bulk'
 DOCUMENTS_PER_POST = 100000
 
 print("Loading Spacy")
-nlp = spacy.load('en_core_web_sm', disable=['ner', 'parser'])
+nlp = spacy.load('en_core_web_lg', disable=['ner', 'parser'])
 nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
 
