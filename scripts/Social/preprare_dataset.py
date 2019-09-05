@@ -12,7 +12,19 @@ import sys
 
 stpwords =  set(stopwords.words('english'))
 
+import spacy
+nlp = spacy.load('en_core_web_lg',disable=["ner",])
 
+def get_verbs_adj(sent):
+    doc = get_doc(sent)
+    verbs_adj = []
+    for token in doc:
+        if token.pos_ in ["VERB","ADJ","NOUN"]:
+            verbs_adj.append(token.text)
+    return verbs_adj
+
+def get_keywords2(inp):
+    return ' '.join(set(get_verbs_adj(inp)))
         
 def get_nli_label(ansIndex,label):
     return 1 if ansIndex == label else 0
@@ -39,9 +51,9 @@ def create_tsv_dataset_for_ir(qlist,labels,fname):
             ansB = qsn["answerB"].replace("\t"," ").replace('\n'," ")
             ansC = qsn["answerC"].replace("\t"," ").replace('\n'," ")
             
-            ofd.write("%s\t%s\t%s\t%d\t%s\n"%(str(index)+":0",passage,ansA,get_nli_label(0,label),get_keywords(passage+" " + ansA)))
-            ofd.write("%s\t%s\t%s\t%d\t%s\n"%(str(index)+":1",passage,ansB,get_nli_label(1,label),get_keywords(passage+" " + ansB)))
-            ofd.write("%s\t%s\t%s\t%d\t%s\n"%(str(index)+":2",passage,ansC,get_nli_label(2,label),get_keywords(passage+" " + ansC)))
+            ofd.write("%s\t%s\t%s\t%d\t%s\n"%(str(index)+":0",passage,ansA,get_nli_label(0,label),get_keywords2(passage+" " + ansA)))
+            ofd.write("%s\t%s\t%s\t%d\t%s\n"%(str(index)+":1",passage,ansB,get_nli_label(1,label),get_keywords2(passage+" " + ansB)))
+            ofd.write("%s\t%s\t%s\t%d\t%s\n"%(str(index)+":2",passage,ansC,get_nli_label(2,label),get_keywords2(passage+" " + ansC)))
 
 
 input_path = sys.argv[1]
