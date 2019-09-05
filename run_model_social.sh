@@ -10,7 +10,7 @@ sleep 15
 
 cp scripts/Social/* .
 
-cat atomic_knowledge_sentences.txt.txt | python insert_text_to_elasticsearch.py
+cat atomic_knowledge_sentences.txt | python insert_text_to_elasticsearch.py
 
 python preprare_dataset.py val.jsonl
 

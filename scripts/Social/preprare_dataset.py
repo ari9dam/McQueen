@@ -12,20 +12,10 @@ import sys
 
 stpwords =  set(stopwords.words('english'))
 
-input_path = sys.argv[1]
 
-
-val_dict = []
-with jsonlines.open(input_path) as reader:
-    for obj in reader:
-        val_dict.append(obj)
         
-        
-val_labels = []
-with open(input_path) as tlabels:
-    for line in tlabels.readlines():
-        val_labels.append('0')
-        
+def get_nli_label(ansIndex,label):
+    return 1 if ansIndex == label else 0
         
 def strip_punct(s):
     exclude = set(string.punctuation)
@@ -52,5 +42,19 @@ def create_tsv_dataset_for_ir(qlist,labels,fname):
             ofd.write("%s\t%s\t%s\t%d\t%s\n"%(str(index)+":0",passage,ansA,get_nli_label(0,label),get_keywords(passage+" " + ansA)))
             ofd.write("%s\t%s\t%s\t%d\t%s\n"%(str(index)+":1",passage,ansB,get_nli_label(1,label),get_keywords(passage+" " + ansB)))
             ofd.write("%s\t%s\t%s\t%d\t%s\n"%(str(index)+":2",passage,ansC,get_nli_label(2,label),get_keywords(passage+" " + ansC)))
+
+
+input_path = sys.argv[1]
+
+val_dict = []
+with jsonlines.open(input_path) as reader:
+    for obj in reader:
+        val_dict.append(obj)
+        
+        
+val_labels = []
+with open(input_path) as tlabels:
+    for line in tlabels.readlines():
+        val_labels.append('0')
             
 create_tsv_dataset_for_ir(val_dict,val_labels,"dev_ir.tsv")
