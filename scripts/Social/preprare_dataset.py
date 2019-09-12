@@ -129,6 +129,19 @@ def create_tsv_dataset_for_ir_lemma_with_type(qlist,labels,fname):
 
 input_path = sys.argv[1]
 
+if len(sys.argv)>2:
+    label_path = sys.argv[2]
+else:
+    label_path=input_path
+
+output_name = "dev_ir.tsv"
+output_name_lemma = "dev_ir_lemma.tsv"
+
+if len(sys.argv)> 3:
+    output_name = sys.argv[3]
+    output_name_lemma = output_name + "lemma.tsv"
+
+
 val_dict = []
 with jsonlines.open(input_path) as reader:
     for obj in reader:
@@ -136,9 +149,12 @@ with jsonlines.open(input_path) as reader:
         
         
 val_labels = []
-with open(input_path) as tlabels:
+with open(label_path) as tlabels:
     for line in tlabels.readlines():
-        val_labels.append('0')
+        if input_path==label_path:
+            val_labels.append('0')
+        else:
+            val_labels.append(int(line.strip())-1)
             
-create_tsv_dataset_for_ir(val_dict,val_labels,"dev_ir.tsv")
-create_tsv_dataset_for_ir_lemma_with_type(val_dict,val_labels,"dev_ir_lemma.tsv")
+create_tsv_dataset_for_ir(val_dict,val_labels,output_name)
+create_tsv_dataset_for_ir_lemma_with_type(val_dict,val_labels,output_name_lemma)
