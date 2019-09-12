@@ -154,7 +154,7 @@ with open(label_path) as tlabels:
         if input_path==label_path:
             val_labels.append('0')
         else:
-            val_labels.append(int(line.strip())-1)
+            val_labels.append(int(line.strip()))
             
 create_tsv_dataset_for_ir(val_dict,val_labels,output_name)
 create_tsv_dataset_for_ir_lemma_with_type(val_dict,val_labels,output_name_lemma)
