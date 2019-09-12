@@ -242,6 +242,17 @@ def create_multinli(train_fn,dev_fn,trainout,devout,typet,no_train=False):
     dev_merged = create_unmerged_facts_map(dev_df)
     dev_merged = create_reranked_umap(dev_merged)
     create_multinli_data(dev_merged,devout,typet)
+
+def create_multinli_knowledge(train_fn,dev_fn,trainout,devout,typet,no_train=False):
+    if not no_train:
+        train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+        train_merged = create_unmerged_facts_map(train_df)
+        train_merged = create_reranked_umap(train_merged)
+        create_multinli_data_knowledge(train_merged,trainout,typet)
+    dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+    dev_merged = create_unmerged_facts_map(dev_df)
+    dev_merged = create_reranked_umap(dev_merged)
+    create_multinli_data_knowledge(dev_merged,devout,typet)
     
 def create_multinli_filtered(train_fn,dev_fn,trainout,devout,typet):
     train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
@@ -300,7 +311,19 @@ def create_multinli_data(merged_map,fname,typet):
             passage = row['passage']
             choices = [passage + " . " + row['answerlist'][0],passage + " . " + row['answerlist'][1],passage + " . " + row['answerlist'][2]]
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":0})
-            
+  
+def create_multinli_data_knowledge(merged_map,fname,typet):
+    with jsonlines.open(fname+".jsonl", mode='w') as writer:
+        for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
+            passage = row['passage']
+            facts = []
+            facts.extend( [tup[0] + passage for tup in row['facts']['0']])
+            facts.extend( [tup[0] + passage for tup in row['facts']['1']])
+            facts.extend( [tup[0] + passage for tup in row['facts']['2']])
+            choices = [row['answerlist'][0],row['answerlist'][1],row['answerlist'][2]]
+            for fix,fact in enumerate(set(facts)):
+                nqidx = qidx+":"+str(fix)
+                writer.write({"id":qidx,"premises":[fact,fact,fact],"choices":choices,"gold_label":row['label']})          
             
 def create_multinli_data_unique(merged_map,fname,typet):
     with jsonlines.open("../data/"+typet+"/"+fname+".jsonl", mode='w') as writer:
@@ -352,6 +375,7 @@ if __name__ == "__main__":
     #         docmap[fact]=doc
     
     typet = sys.argv[1]
+
     if typet == 'swag_simple':
         create_reranked_s("../data/simple_ir/train-ir.tsv.out","../data/simple_ir/dev-ir.tsv.out","train_swag_rr.tsv","dev_swag_rr.tsv","simple_ir")
     elif typet == 'swag_vadj':
@@ -378,3 +402,6 @@ if __name__ == "__main__":
         create_ir_files("../data/train-lemma.tsv.out","../data/dev-lemma.tsv.out","train_ir2.tsv","dev_ir.tsv","")
     elif typet == "eval":
         create_multinli("","dev_ir.tsv.out","","dev","",no_train=True)
+    elif typet == "lemma_knowledge":
+        create_multinli_knowledge("train_ir.tsv.out","dev_ir.tsv.out","train","dev","")
+
