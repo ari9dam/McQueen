@@ -4,7 +4,7 @@ import json
 import logging
 import torch
 from tqdm import tqdm
-from pytorch_transformers.tokenization_bert import BertTokenizer
+from pytorch_transformers.tokenization_roberta import RobertaTokenizer
 from torch.utils.data import TensorDataset
 import os
 import pickle
@@ -12,7 +12,13 @@ import pickle
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class BertMCQConcatReader:
+class RoBertaMCQConcatReader:
+    
+    def __init__(self,debug=False):
+        self.truncated=0
+        self.tokenized_map = {}
+        self.debug=debug
+    
     @staticmethod
     def _truncate_tokens(tokens_a, tokens_b, max_length):
         """
@@ -36,20 +42,33 @@ class BertMCQConcatReader:
     def save_cache(self,obj,fname):
         with open(fname, 'wb+') as handle:
             pickle.dump(obj, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+    
+    
     def bert_features_from_qa(self, tokenizer, max_pieces: int, question: str, answer: str, context: str = None):
-        cls_token = "[CLS]"
-        sep_token = "[SEP]"
-        question_tokens = tokenizer.tokenize(question)
+        cls_token = tokenizer.cls_token
+        sep_token = tokenizer.sep_token
+        
+        question_tokens = self.tokenized_map.get(question,tokenizer.tokenize(question))
+        self.tokenized_map[question]=question_tokens
+        
         if context is not None:
-            context_tokens = tokenizer.tokenize(context)
+            context_tokens = self.tokenized_map.get(context,tokenizer.tokenize(context))
+            self.tokenized_map[context] = context_tokens
+            #Append sep tokens
             question_tokens = context_tokens + [sep_token] + question_tokens
-        choice_tokens = tokenizer.tokenize(answer)
-        question_tokens, choice_tokens = self._truncate_tokens(question_tokens, choice_tokens, max_pieces - 3)
+        
+        choice_tokens = self.tokenized_map.get(answer,tokenizer.tokenize(answer))
+        self.tokenized_map[answer]=choice_tokens
+        
+        question_tokens, choice_tokens = self._truncate_tokens(question_tokens, choice_tokens, max_pieces - 4)
 
-        tokens = [cls_token] + question_tokens + [sep_token] + choice_tokens + [sep_token]
-        segment_ids = list(itertools.repeat(0, len(question_tokens) + 2)) + \
+        tokens = [cls_token] + question_tokens + [sep_token]+ [sep_token] + choice_tokens + [sep_token]
+        segment_ids = list(itertools.repeat(0, len(question_tokens) + 3)) + \
                       list(itertools.repeat(1, len(choice_tokens) + 1))
+        
+        if self.debug:
+            logger.info("Generated tokens %s\n %s", str(tokens), str(segment_ids))
+        
         return tokens, segment_ids
 
     def text_to_instance(self,  # type: ignore
@@ -59,7 +78,6 @@ class BertMCQConcatReader:
                          choices: List[str],
                          question: str = None,
                          max_number_premises=None):
-        debug = False
         tokens = []
         token_type_ids = []
         if isinstance(premises,str):
@@ -87,12 +105,16 @@ class BertMCQConcatReader:
                                                                           question=question,
                                                                           context=concatenated_premise,
                                                                           answer=hypothesis)
-            if debug:
+
+            # tokenize
+            input_ids = tokenizer.convert_tokens_to_ids(ph_tokens)
+            if self.debug:
                 print(f"Premise: {premise}, Hypothesis :{hypothesis}")
                 print(f"Concatenated Premise: {concatenated_premise}")
                 print(f"Tokens : {ph_tokens}, TokenIds: {ph_token_type_ids}")
-            # tokenize
-            input_ids = tokenizer.convert_tokens_to_ids(ph_tokens)
+                print(f"InputIds : {input_ids}")
+            
+            
             # Zero-pad up to the sequence length.
             padding = [0] * (max_seq_length - len(input_ids))
             input_ids += padding
@@ -109,7 +131,7 @@ class BertMCQConcatReader:
         
         file_name = file_path.split("/")[-1]
         dir_name = os.path.dirname(file_path)
-        cache_file_path =  os.path.join(dir_name, 'cached_concat_bert_{}_{}_{}'.format(file_name,max_seq_len,max_number_premises))
+        cache_file_path =  os.path.join(dir_name, 'cached_concat_roberta_{}_{}_{}'.format(file_name,max_seq_len,max_number_premises))
         if os.path.exists(cache_file_path):
             logger.info("Loading features from cached file %s", cache_file_path)
             features = self.load_cache(cache_file_path)
@@ -229,8 +251,8 @@ class BertMCQConcatReader:
 
 
 def main():
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-    reader = BertMCQConcatReader()
+    tokenizer = RobertaTokenizer.from_pretrained('roberta-base', do_lower_case=True)
+    reader = RoBertaMCQConcatReader(debug=True)
     out = reader.read("dummy_data.jsonl", tokenizer, 20)
     print(len(out))
     tokens, segs, masks, labels = out[0]

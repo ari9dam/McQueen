@@ -5,7 +5,7 @@ import logging
 import torch
 from tqdm import tqdm
 import pickle
-from pytorch_transformers.tokenization_bert import BertTokenizer
+from pytorch_transformers.tokenization_roberta import RobertaTokenizer
 from torch.utils.data import TensorDataset
 import os
 
@@ -16,12 +16,12 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-class BertMCQParallelReader:
+class RoBertaMCQParallelReader:
     
-    def __init__(self):
+    def __init__(self,debug=False):
         self.truncated=0
         self.tokenized_map = {}
-        
+        self.debug=debug
         
     def load_cache(self,path_to_docmap):
         pickle_in = open(path_to_docmap,"rb")
@@ -51,8 +51,8 @@ class BertMCQParallelReader:
         return tokens_a, tokens_b
 
     def bert_features_from_qa(self, tokenizer, max_pieces: int, question: str, answer: str, context: str = None):
-        cls_token = "[CLS]"
-        sep_token = "[SEP]"
+        cls_token = tokenizer.cls_token
+        sep_token = tokenizer.sep_token
         
         question_tokens = self.tokenized_map.get(question,tokenizer.tokenize(question))
         self.tokenized_map[question]=question_tokens
@@ -66,11 +66,15 @@ class BertMCQParallelReader:
         choice_tokens = self.tokenized_map.get(answer,tokenizer.tokenize(answer))
         self.tokenized_map[answer]=choice_tokens
         
-        question_tokens, choice_tokens = self._truncate_tokens(question_tokens, choice_tokens, max_pieces - 3)
+        question_tokens, choice_tokens = self._truncate_tokens(question_tokens, choice_tokens, max_pieces - 4)
 
-        tokens = [cls_token] + question_tokens + [sep_token] + choice_tokens + [sep_token]
-        segment_ids = list(itertools.repeat(0, len(question_tokens) + 2)) + \
+        tokens = [cls_token] + question_tokens + [sep_token]+ [sep_token] + choice_tokens + [sep_token]
+        segment_ids = list(itertools.repeat(0, len(question_tokens) + 3)) + \
                       list(itertools.repeat(1, len(choice_tokens) + 1))
+        
+        if self.debug:
+            logger.info("Generated tokens %s\n %s", str(tokens), str(segment_ids))
+        
         return tokens, segment_ids
 
     def text_to_instance(self,  # type: ignore
@@ -133,7 +137,7 @@ class BertMCQParallelReader:
     def read(self, file_path: str, tokenizer, max_seq_len: int, max_number_premises:int=None):
         file_name = file_path.split("/")[-1]
         dir_name = os.path.dirname(file_path)
-        cache_file_path =  os.path.join(dir_name, 'cached_bert_{}_{}_{}'.format(file_name,max_seq_len,max_number_premises))
+        cache_file_path =  os.path.join(dir_name, 'cached_roberta_{}_{}_{}'.format(file_name,max_seq_len,max_number_premises))
         if os.path.exists(cache_file_path):
             logger.info("Loading features from cached file %s", cache_file_path)
             features = self.load_cache(cache_file_path)
@@ -239,16 +243,16 @@ class BertMCQParallelReader:
         return TensorDataset(all_tokens, all_segment_ids, all_masks, all_labels)
 
 def main():
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-    reader = BertMCQParallelReader()
+    tokenizer = RobertaTokenizer.from_pretrained('roberta-base', do_lower_case=True)
+    reader = RoBertaMCQParallelReader(debug=True)
     
     out = reader.read("dummy_data.jsonl", tokenizer, 70, None)
     print(len(out))
     tokens, segs, masks, labels = out[0]
-#     print(tokens.size())
-#     print(segs)
-#     print(masks)
-#     print(labels.size()) # shoud be 0
+    print(tokens.size())
+    print(segs)
+    print(masks)
+    print(labels.size()) # shoud be 0
 
 
 if __name__ == "__main__":

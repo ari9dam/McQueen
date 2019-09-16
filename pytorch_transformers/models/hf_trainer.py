@@ -14,10 +14,13 @@ from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler)
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 from pytorch_transformers.file_utils import PYTORCH_PRETRAINED_BERT_CACHE
-from pytorch_transformers import WEIGHTS_NAME, CONFIG_NAME
+from pytorch_transformers import WEIGHTS_NAME, CONFIG_NAME, RobertaConfig
 from pytorch_transformers.modeling_bert import BertModel
 from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
+
 from pytorch_transformers.tokenization_bert import BertTokenizer
+from pytorch_transformers.tokenization_roberta import RobertaTokenizer
+
 from hf_bert_mcq_parallel_reader import BertMCQParallelReader
 from hf_bert_mcq_parallel import BertMCQParallel
 from util import cleanup_global_logging,prepare_global_logging
@@ -27,13 +30,23 @@ from hf_bert_mcq_weighted_sum import BertMCQWeightedSum
 from hf_bert_mcq_simple_sum import BertMCQSimpleSum
 from hf_bert_mcq_mac import BertMCQMAC
 
+
+from hf_roberta_mcq_concat import RoBertaMCQConcat
+from hf_roberta_mcq_concat_reader import RoBertaMCQConcatReader
+from hf_roberta_mcq_weighted_sum import RoBertaMCQWeightedSum
+from hf_roberta_mcq_simple_sum import RoBertaMCQSimpleSum
+from hf_roberta_mcq_mac import RoBertaMCQMAC
+from hf_roberta_mcq_parallel_reader import RoBertaMCQParallelReader
+from hf_roberta_mcq_parallel import RoBertaMCQParallel
+
+
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
-MODELS = {
-    "mcq_parallel": (BertModel, BertMCQParallelReader)
-}
+# MODELS = {
+#     "mcq_parallel": (BertModel, BertMCQParallelReader)
+# }
 
 
 def accuracy(out, labels):
@@ -63,12 +76,12 @@ def main():
 
     parser.add_argument("--mcq_model", default=None, type=str, required=True,
                         help="choose one from the list: bert-mcq-parallel-max, "
-                             "bert-mcq_parallel-weighted-sum, bert-mcq-concat, mac-bert")
+                             "bert-mcq_parallel-weighted-sum, bert-mcq-concat, mac-bert, or add roberta instead of bert")
 
     parser.add_argument("--bert_model", default=None, type=str, required=True,
                         help="Bert pre-trained model selected in the list: bert-base-uncased, "
                              "bert-large-uncased, bert-base-cased, bert-large-cased, bert-base-multilingual-uncased, "
-                             "bert-base-multilingual-cased, bert-base-chinese.")
+                             "bert-base-multilingual-cased, bert-base-chinese, roberta-base, roberta-large")
     parser.add_argument("--output_dir",
                         default=None,
                         type=str,
@@ -158,6 +171,12 @@ def main():
                         type=int,
                         default=None,
                         help="Number of premise sentences to use at max")
+    parser.add_argument('--num_labels',
+                        type=int,
+                        default=3,
+                        help="Number of labels")
+    parser.add_argument('--overwrite_output_dir', action='store_true',
+                        help="Overwrite the content of the output directory")
     args = parser.parse_args()
 
     if args.local_rank == -1 or args.no_cuda:
@@ -182,8 +201,12 @@ def main():
     if not args.do_train and not args.do_eval:
         raise ValueError("At least one of `do_train` or `do_eval` must be True.")
 
-    if os.path.exists(args.output_dir) and os.listdir(args.output_dir):
-        raise ValueError("Output directory ({}) already exists and is not empty.".format(args.output_dir))
+#     if os.path.exists(args.output_dir) and os.listdir(args.output_dir):
+#         raise ValueError("Output directory ({}) already exists and is not empty.".format(args.output_dir))
+        
+    if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and not args.overwrite_output_dir:
+        raise ValueError("Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(args.output_dir))
+        
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
@@ -197,7 +220,14 @@ def main():
     if n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
-    tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+    if "roberta" in args.bert_model:
+        tokenizer = RobertaTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+        logger.info("Type of Tokenizer : ROBERTA")
+    else:
+        tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+        logger.info("Type of Tokenizer : BERT")
+
+        
     data_reader = None
     if args.mcq_model == 'bert-mcq-parallel-max':
         model = BertMCQParallel.from_pretrained(args.bert_model,
@@ -217,7 +247,6 @@ def main():
         data_reader = BertMCQParallelReader()
     elif args.mcq_model == 'bert-mcq-simple-sum':
         model = BertMCQSimpleSum.from_pretrained(args.bert_model,
-
                                                    cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                           'distributed_{}'.format(args.local_rank)))
         data_reader = BertMCQParallelReader()
@@ -226,6 +255,36 @@ def main():
                                                    cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                           'distributed_{}'.format(args.local_rank)))
         data_reader = BertMCQParallelReader()
+    elif args.mcq_model == 'roberta-mcq-parallel-max':
+        model = RoBertaMCQParallel.from_pretrained(args.bert_model,
+                                                cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                       'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelReader()
+    elif args.mcq_model == 'roberta-mcq-concat':
+        model = RoBertaMCQConcat.from_pretrained(args.bert_model,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQConcatReader()
+        
+    elif args.mcq_model == 'roberta-mcq-weighted-sum':
+        model = RoBertaMCQWeightedSum.from_pretrained(args.bert_model,
+                                                   tie_weights = args.tie_weights_weighted_sum,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelReader()
+        
+    elif args.mcq_model == 'roberta-mcq-simple-sum':
+        model = RoBertaMCQSimpleSum.from_pretrained(args.bert_model,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelReader()
+        
+    elif args.mcq_model == 'roberta-mcq-mac':
+        model = RoBertaMCQMAC.from_pretrained(args.bert_model,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelReader()
+        
     else:
         logger.error(f"Invalid MCQ model name {args.mcq_model}")
         exit(0)
@@ -279,7 +338,7 @@ def main():
                     "Please install apex from https://www.github.com/nvidia/apex to use distributed and fp16 training.")
 
             model = DDP(model)
-        elif n_gpu > 1:
+        elif n_gpu > 1 and not args.no_cuda:
             model = torch.nn.DataParallel(model)
 
         global_step = 0
