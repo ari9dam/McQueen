@@ -34,7 +34,11 @@ logger = logging.getLogger(__name__)
 
 
 class RoBertaMCQWeightedSum(BertPreTrainedModel):
-    def __init__(self, config,  tie_weights):
+    config_class = RobertaConfig
+    pretrained_model_archive_map = ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP
+    base_model_prefix = "roberta"
+    
+    def __init__(self, config,tie_weights):
         super(RoBertaMCQWeightedSum, self).__init__(config)
         self.roberta = RobertaModel(config)
         self._dropout = nn.Dropout(config.hidden_dropout_prob)
