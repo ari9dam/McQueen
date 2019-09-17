@@ -7,7 +7,7 @@ import spacy
 import sys
 import jsonlines
 
-types = ["WNTS","RCTNS","DESC","MOTI","NDS","EFCT","DEFT"]    
+types = ["WNTS","RCTN","DESC","MOTI","NDS","EFCT","DEFT"]    
 
 
 def read_file(fname):
