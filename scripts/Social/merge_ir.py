@@ -358,7 +358,7 @@ def create_multinli_with_prem_first_score(merged_map,fname,typet):
             context = passage.split(" . ")[0]
             question = passage.split(" . ")[1]
 
-            facts = [[(context,1)],[(context,1)],[(context,1)]
+            facts = [[(context,1)],[(context,1)],[(context,1)]]
             facts[0].extend( [tup for tup in row['facts']['0'][0:10]])
             facts[1].extend( [tup for tup in row['facts']['1'][0:10]])
             facts[2].extend( [tup for tup in row['facts']['2'][0:10]])
@@ -366,18 +366,20 @@ def create_multinli_with_prem_first_score(merged_map,fname,typet):
             choices = [question + " " + row['answerlist'][0],question + " " + row['answerlist'][1],question + " " + row['answerlist'][2]]
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":0})
   
+
 def create_multinli_data_knowledge(merged_map,fname,typet):
     with jsonlines.open(fname+".jsonl", mode='w') as writer:
         for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
             passage = row['passage']
             facts = []
-            facts.extend( [tup[0] + passage for tup in row['facts']['0']])
-            facts.extend( [tup[0] + passage for tup in row['facts']['1']])
-            facts.extend( [tup[0] + passage for tup in row['facts']['2']])
+            facts.extend( [tup[0] for tup in row['facts']['0'][0:20]])
+            facts.extend( [tup[0] for tup in row['facts']['1'][0:20]])
+            facts.extend( [tup[0] for tup in row['facts']['2'][0:20]])
             choices = [row['answerlist'][0],row['answerlist'][1],row['answerlist'][2]]
             for fix,fact in enumerate(set(facts)):
                 nqidx = qidx+":"+str(fix)
-                writer.write({"id":qidx,"premises":[fact,fact,fact],"choices":choices,"gold_label":row['label']})          
+                f1 = fact + " " + passage
+                writer.write({"id":nqidx,"fact":fact,"passage":passage,"premises":[[f1],[f1],[f1]],"choices":choices,"gold_label":row['label']})        
             
 def create_multinli_data_unique(merged_map,fname,typet):
     with jsonlines.open("../data/"+typet+"/"+fname+".jsonl", mode='w') as writer:
