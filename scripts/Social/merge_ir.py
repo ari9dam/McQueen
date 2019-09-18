@@ -344,9 +344,9 @@ def create_multinli_with_prem_first(merged_map,fname,typet):
             passage = row['passage']
 
             facts = [[passage],[passage],[passage]]
-            facts.extend( [tup[0] + " . "+passage for tup in row['facts']['0'][0:10]])
-            facts.extend( [tup[0] + " . "+passage for tup in row['facts']['1'][0:10]])
-            facts.extend( [tup[0] + " . "+passage for tup in row['facts']['2'][0:10]])
+            facts[0].extend( [tup[0] + " . "+passage for tup in row['facts']['0'][0:10]])
+            facts[1].extend( [tup[0] + " . "+passage for tup in row['facts']['1'][0:10]])
+            facts[2].extend( [tup[0] + " . "+passage for tup in row['facts']['2'][0:10]])
 
             choices = row['answerlist']
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
@@ -364,9 +364,9 @@ def create_multinli_with_prem_first_score(merged_map,fname,typet):
 
             facts = [[[passage,1]],[[passage,1]],[[passage,1]]]
 
-            facts.extend([append_context(tup,passage) for tup in row['facts']['0'][0:10]])
-            facts.extend([append_context(tup,passage) for tup in row['facts']['1'][0:10]])
-            facts.extend([append_context(tup,passage) for tup in row['facts']['2'][0:10]])
+            facts[0].extend([append_context(tup,passage) for tup in row['facts']['0'][0:10]])
+            facts[1].extend([append_context(tup,passage) for tup in row['facts']['1'][0:10]])
+            facts[2].extend([append_context(tup,passage) for tup in row['facts']['2'][0:10]])
 
             choices = row['answerlist']
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
