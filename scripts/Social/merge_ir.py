@@ -342,13 +342,16 @@ def create_multinli_with_prem_first(merged_map,fname,typet):
             context = passage.split(" . ")[0]
             question = passage.split(" . ")[1]
 
-            facts = [[context],[context],[context]]
-            facts[0].extend( [tup[0] for tup in row['facts']['0'][0:10]])
-            facts[1].extend( [tup[0] for tup in row['facts']['1'][0:10]])
-            facts[2].extend( [tup[0] for tup in row['facts']['2'][0:10]])
+            facts = []
+            facts.append( [tup[0] + " . "+context + question for tup in row['facts']['0'][0:10]])
+            facts.append( [tup[0] + " . "+context + question for tup in row['facts']['1'][0:10]])
+            facts.append( [tup[0] + " . "+context + question for tup in row['facts']['2'][0:10]])
 
-            choices = [question + " " + row['answerlist'][0],question + " " + row['answerlist'][1],question + " " + row['answerlist'][2]]
-            writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":0})
+            choices = row['answerlist']
+            writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
+
+def append_context(tup,context,question):
+    return [tup[0] + " . "+context + question,tup[1]]
 
 def create_multinli_with_prem_first_score(merged_map,fname,typet):
     with jsonlines.open(fname+".jsonl", mode='w') as writer:
@@ -358,13 +361,14 @@ def create_multinli_with_prem_first_score(merged_map,fname,typet):
             context = passage.split(" . ")[0]
             question = passage.split(" . ")[1]
 
-            facts = [[(context,1)],[(context,1)],[(context,1)]]
-            facts[0].extend( [tup for tup in row['facts']['0'][0:10]])
-            facts[1].extend( [tup for tup in row['facts']['1'][0:10]])
-            facts[2].extend( [tup for tup in row['facts']['2'][0:10]])
+            facts = []
 
-            choices = [question + " " + row['answerlist'][0],question + " " + row['answerlist'][1],question + " " + row['answerlist'][2]]
-            writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":0})
+            facts.append([append_context(tup) for tup in row['facts']['0'][0:10]])
+            facts.append([append_context(tup) for tup in row['facts']['1'][0:10]])
+            facts.append([append_context(tup) for tup in row['facts']['2'][0:10]])
+
+            choices = row['answerlist']
+            writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
   
 
 def create_multinli_data_knowledge(merged_map,fname,typet):
