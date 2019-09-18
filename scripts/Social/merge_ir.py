@@ -248,18 +248,21 @@ def create_multinli_cont(train_fn,dev_fn,trainout,devout,typet,no_train=False):
         train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
         train_merged = create_unmerged_facts_map(train_df)
         train_merged = create_reranked_umap(train_merged)
-        create_multinli_data(train_merged,trainout,typet)
+        create_multinli_with_prem_first(train_merged,trainout,typet)
+        create_multinli_with_prem_first_score(train_merged,trainout+"_score",typet)
     dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
     dev_merged = create_unmerged_facts_map(dev_df)
     dev_merged = create_reranked_umap(dev_merged)
     create_multinli_with_prem_first(dev_merged,devout,typet)
+    create_multinli_with_prem_first_score(dev_merged,devout+"_score",typet)
+
 
 def create_multinli_cont_score(train_fn,dev_fn,trainout,devout,typet,no_train=False):
     if not no_train:
         train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
         train_merged = create_unmerged_facts_map(train_df)
         train_merged = create_reranked_umap(train_merged)
-        create_multinli_data(train_merged,trainout,typet)
+        create_multinli_with_prem_first_score(train_merged,trainout,typet)
     dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
     dev_merged = create_unmerged_facts_map(dev_df)
     dev_merged = create_reranked_umap(dev_merged)
@@ -339,19 +342,17 @@ def create_multinli_with_prem_first(merged_map,fname,typet):
         for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
 
             passage = row['passage']
-            context = passage.split(" . ")[0]
-            question = passage.split(" . ")[1]
 
-            facts = []
-            facts.append( [tup[0] + " . "+context + question for tup in row['facts']['0'][0:10]])
-            facts.append( [tup[0] + " . "+context + question for tup in row['facts']['1'][0:10]])
-            facts.append( [tup[0] + " . "+context + question for tup in row['facts']['2'][0:10]])
+            facts = [[passage],[passage],[passage]]
+            facts.extend( [tup[0] + " . "+passage for tup in row['facts']['0'][0:10]])
+            facts.extend( [tup[0] + " . "+passage for tup in row['facts']['1'][0:10]])
+            facts.extend( [tup[0] + " . "+passage for tup in row['facts']['2'][0:10]])
 
             choices = row['answerlist']
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
 
-def append_context(tup,context,question):
-    return [tup[0] + " . "+context + question,tup[1]]
+def append_context(tup,passage):
+    return [tup[0] + " . "+passage,tup[1]]
 
 def create_multinli_with_prem_first_score(merged_map,fname,typet):
     with jsonlines.open(fname+".jsonl", mode='w') as writer:
@@ -361,11 +362,11 @@ def create_multinli_with_prem_first_score(merged_map,fname,typet):
             context = passage.split(" . ")[0]
             question = passage.split(" . ")[1]
 
-            facts = []
+            facts = [[[passage,1]],[[passage,1]],[[passage,1]]]
 
-            facts.append([append_context(tup) for tup in row['facts']['0'][0:10]])
-            facts.append([append_context(tup) for tup in row['facts']['1'][0:10]])
-            facts.append([append_context(tup) for tup in row['facts']['2'][0:10]])
+            facts.extend([append_context(tup,passage) for tup in row['facts']['0'][0:10]])
+            facts.extend([append_context(tup,passage) for tup in row['facts']['1'][0:10]])
+            facts.extend([append_context(tup,passage) for tup in row['facts']['2'][0:10]])
 
             choices = row['answerlist']
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
@@ -466,5 +467,4 @@ if __name__ == "__main__":
         create_multinli_knowledge("train_ir.tsv.out","dev_ir.tsv.out","train","dev","")
     elif typet == "with_perm":
         create_multinli_cont("train_ir.tsv.out","dev_ir.tsv.out","train_perm","dev_perm","")
-        create_multinli_cont_score("train_ir.tsv.out","dev_ir.tsv.out","train_score","dev_score","")
 
