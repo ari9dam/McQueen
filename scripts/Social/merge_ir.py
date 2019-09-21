@@ -414,16 +414,22 @@ def create_multinli_data(merged_map,fname,typet):
             choices = [passage + " . " + row['answerlist'][0],passage + " . " + row['answerlist'][1],passage + " . " + row['answerlist'][2]]
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":0})
 
-def create_multinli_with_prem_first(merged_map,fname,typet):
+def create_multinli_with_prem_first(merged_map,fname,typet,reranked=False):
     with jsonlines.open(fname+".jsonl", mode='w') as writer:
         for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
 
             passage = row['passage']
 
-            facts = [[passage],[passage],[passage]]
-            facts[0].extend( [tup[0] + " . "+passage for tup in row['facts']['0'][0:10]])
-            facts[1].extend( [tup[0] + " . "+passage for tup in row['facts']['1'][0:10]])
-            facts[2].extend( [tup[0] + " . "+passage for tup in row['facts']['2'][0:10]])
+            if reranked:
+                facts = [[passage],[passage],[passage]]
+                facts[0].extend( [tup[0] + " . "+passage for tup in row['facts']['0'][0:10]])
+                facts[1].extend( [tup[0] + " . "+passage for tup in row['facts']['1'][0:10]])
+                facts[2].extend( [tup[0] + " . "+passage for tup in row['facts']['2'][0:10]])
+            else:
+                allfacts = [passage]
+                allfacts.extend([tup[0] + " . "+passage for tup in row['facts'][0:10]])
+                facts = [allfacts,allfacts,allfacts]
+
 
             choices = row['answerlist']
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
@@ -431,7 +437,7 @@ def create_multinli_with_prem_first(merged_map,fname,typet):
 def append_context(tup,passage):
     return [tup[0] + " . "+passage,tup[1]]
 
-def create_multinli_with_prem_first_score(merged_map,fname,typet):
+def create_multinli_with_prem_first_score(merged_map,fname,typet,reranked=False):
     with jsonlines.open(fname+".jsonl", mode='w') as writer:
         for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
 
@@ -439,11 +445,15 @@ def create_multinli_with_prem_first_score(merged_map,fname,typet):
             context = passage.split(" . ")[0]
             question = passage.split(" . ")[1]
 
-            facts = [[[passage,1]],[[passage,1]],[[passage,1]]]
-
-            facts[0].extend([append_context(tup,passage) for tup in row['facts']['0'][0:10]])
-            facts[1].extend([append_context(tup,passage) for tup in row['facts']['1'][0:10]])
-            facts[2].extend([append_context(tup,passage) for tup in row['facts']['2'][0:10]])
+            if reranked:
+                facts = [[[passage,1]],[[passage,1]],[[passage,1]]]
+                facts[0].extend([append_context(tup,passage) for tup in row['facts']['0'][0:10]])
+                facts[1].extend([append_context(tup,passage) for tup in row['facts']['1'][0:10]])
+                facts[2].extend([append_context(tup,passage) for tup in row['facts']['2'][0:10]])
+            else:
+                allfacts = [[passage,1]]
+                allfacts.extend([append_context(tup[0],passage) for tup in row['facts'][0:10]])
+                facts = [allfacts,allfacts,allfacts]
 
             choices = row['answerlist']
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
