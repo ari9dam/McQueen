@@ -113,7 +113,7 @@ def create_merged_facts_map_add(df):
             score = float(tup[1])
             if fact in merged_map[qidx]['facts']:
                 current_score = merged_map[qidx]['facts'][fact]
-                score = scor + current_score
+                score = score + current_score
             merged_map[qidx]['facts'][fact] = score
             
     sorted_merged_map = {}
@@ -225,6 +225,23 @@ def create_merged_datasets(train_fn,dev_fn,trainout,devout,typet,no_train=False,
         dev_merged = create_reranked_umap(dev_merged)
     create_multinli_with_prem_first(dev_merged,devout,typet)
     create_multinli_with_prem_first_score(dev_merged,devout+"_score",typet)
+
+def create_merged_datasets_rr(train_fn,dev_fn,trainout,devout,typet):
+    fmerged = { "max":create_merged_facts_map,"sum":create_merged_facts_map_add,"weighted":create_merged_facts_map_weighted}
+    train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+    dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+
+    for mtype,merge_func in fmerged.keys():
+        trainout = trainout+"_"+mtype 
+        merge_func = fmerged[mtype]
+        train_merged = merge_func(train_df)
+        train_merged = create_reranked_umap(train_merged)
+        create_multinli_with_prem_first(train_merged,trainout,typet)
+        create_multinli_with_prem_first_score(train_merged,trainout+"_score",typet)
+        dev_merged = merge_func(dev_df)
+        dev_merged = create_reranked_umap(dev_merged)
+        create_multinli_with_prem_first(dev_merged,devout,typet)
+        create_multinli_with_prem_first_score(dev_merged,devout+"_score",typet)
 
 
     
@@ -452,7 +469,7 @@ def create_multinli_with_prem_first_score(merged_map,fname,typet,reranked=False)
                 facts[2].extend([append_context(tup,passage) for tup in row['facts']['2'][0:10]])
             else:
                 allfacts = [[passage,1]]
-                allfacts.extend([append_context(tup[0],passage) for tup in row['facts'][0:10]])
+                allfacts.extend([append_context(tup,passage) for tup in row['facts'][0:10]])
                 facts = [allfacts,allfacts,allfacts]
 
             choices = row['answerlist']
@@ -558,5 +575,7 @@ if __name__ == "__main__":
         create_merged_datasets("train_ir.tsv.out","dev_ir.tsv.out","train_max","dev_max","",rerank=False,mtype="max")
         create_merged_datasets("train_ir.tsv.out","dev_ir.tsv.out","train_sum","dev_sum","",rerank=False,mtype="sum")
         create_merged_datasets("train_ir.tsv.out","dev_ir.tsv.out","train_weighted","dev_weighted","",rerank=False,mtype="weighted")
+    elif typet == "merged_rr":
+        create_merged_datasets_rr("train_ir.tsv.out","dev_ir.tsv.out","train_rr","dev_rr","")
 
 
