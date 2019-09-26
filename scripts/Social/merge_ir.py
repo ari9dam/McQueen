@@ -95,6 +95,63 @@ def create_merged_facts_map(df):
         sorted_merged_map[qid]['facts'] = list(sorted(merged_map[qid]['facts'].items(), key=operator.itemgetter(1),reverse=True))
     return sorted_merged_map
 
+def create_merged_facts_map_add(df):
+    merged_map = {}
+    for index, row in tqdm(df.iterrows(),desc="Creating Map"):
+        qidx = row['qid'].split(":")[0]
+        if qidx not in merged_map:
+            merged_map[qidx]={}
+            merged_map[qidx]['answerlist']=[]
+            merged_map[qidx]['facts']={}
+        merged_map[qidx]['passage'] = row['passage']
+        merged_map[qidx]['answerlist'].append(row['answer'])
+        if row['label'] == 1:
+            merged_map[qidx]['label'] = row['qid'].split(":")[1]
+        irfacts = ast.literal_eval(row['irfacts'])
+        for tup in irfacts:
+            fact = tup[0]
+            score = float(tup[1])
+            if fact in merged_map[qidx]['facts']:
+                current_score = merged_map[qidx]['facts'][fact]
+                score = score + current_score
+            merged_map[qidx]['facts'][fact] = score
+            
+    sorted_merged_map = {}
+    for qid in tqdm(merged_map.keys(),desc="Sorting:"):
+        sorted_merged_map[qid]=merged_map[qid]
+        sorted_merged_map[qid]['facts'] = list(sorted(merged_map[qid]['facts'].items(), key=operator.itemgetter(1),reverse=True))
+    return sorted_merged_map
+
+def create_merged_facts_map_weighted(df):
+    merged_map = {}
+    for index, row in tqdm(df.iterrows(),desc="Creating Map"):
+        qidx = row['qid'].split(":")[0]
+        if qidx not in merged_map:
+            merged_map[qidx]={}
+            merged_map[qidx]['answerlist']=[]
+            merged_map[qidx]['facts']={}
+        merged_map[qidx]['passage'] = row['passage']
+        merged_map[qidx]['answerlist'].append(row['answer'])
+        if row['label'] == 1:
+            merged_map[qidx]['label'] = row['qid'].split(":")[1]
+        irfacts = ast.literal_eval(row['irfacts'])
+        nirfacts = {}
+        for tup in irfacts:
+            fact = tup[0]
+            score = float(tup[1])
+            if fact not in nirfacts:
+                nirfacts[fact] = []
+            nirfacts[fact].append(score)
+        for fact,scores in nirfacts.items():
+            nscore = sum(scores)/len(scores)
+            merged_map[qidx]['facts'][fact]=nscore
+            
+    sorted_merged_map = {}
+    for qid in tqdm(merged_map.keys(),desc="Sorting:"):
+        sorted_merged_map[qid]=merged_map[qid]
+        sorted_merged_map[qid]['facts'] = list(sorted(merged_map[qid]['facts'].items(), key=operator.itemgetter(1),reverse=True))
+    return sorted_merged_map
+
 def create_unmerged_facts_map(df,filter=False):
     unmap = {}
     for index, row in tqdm(df.iterrows(),desc="Creating Map"):
@@ -150,6 +207,43 @@ def create_s(train_fn,dev_fn,trainout,devout,typet):
     dev_merged = create_merged_facts_map(dev_df)
     create_swag_data(train_merged,trainout,typet)
     create_swag_data(dev_merged,devout,typet)
+
+
+def create_merged_datasets(train_fn,dev_fn,trainout,devout,typet,no_train=False,rerank=False,mtype="max"):
+    fmerged = { "max":create_merged_facts_map,"sum":create_merged_facts_map_add,"weighted":create_merged_facts_map_weighted}
+    merge_func = fmerged[mtype]
+    if not no_train:
+        train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+        train_merged = merge_func(train_df)
+        if rerank:
+            train_merged = create_reranked_umap(train_merged)
+        create_multinli_with_prem_first(train_merged,trainout,typet)
+        create_multinli_with_prem_first_score(train_merged,trainout+"_score",typet)
+    dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+    dev_merged = merge_func(dev_df)
+    if rerank:
+        dev_merged = create_reranked_umap(dev_merged)
+    create_multinli_with_prem_first(dev_merged,devout,typet)
+    create_multinli_with_prem_first_score(dev_merged,devout+"_score",typet)
+
+def create_merged_datasets_rr(train_fn,dev_fn,trainout,devout,typet):
+    fmerged = { "max":create_merged_facts_map,"sum":create_merged_facts_map_add,"weighted":create_merged_facts_map_weighted}
+    train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+    dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+
+    for mtype,merge_func in fmerged.items():
+        trainout = trainout+"_"+mtype 
+        merge_func = fmerged[mtype]
+        train_merged = merge_func(train_df)
+        train_merged = create_reranked_map(train_merged)
+        create_multinli_with_prem_first(train_merged,trainout,typet)
+        create_multinli_with_prem_first_score(train_merged,trainout+"_score",typet)
+        dev_merged = merge_func(dev_df)
+        dev_merged = create_reranked_map(dev_merged)
+        create_multinli_with_prem_first(dev_merged,devout,typet)
+        create_multinli_with_prem_first_score(dev_merged,devout+"_score",typet)
+
+
     
 def rerank_using_spacy(row,topk=20,choice=None):
     passage = row['passage']
@@ -243,6 +337,31 @@ def create_multinli(train_fn,dev_fn,trainout,devout,typet,no_train=False):
     dev_merged = create_reranked_umap(dev_merged)
     create_multinli_data(dev_merged,devout,typet)
 
+def create_multinli_cont(train_fn,dev_fn,trainout,devout,typet,no_train=False):
+    if not no_train:
+        train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+        train_merged = create_unmerged_facts_map(train_df)
+        train_merged = create_reranked_umap(train_merged)
+        create_multinli_with_prem_first(train_merged,trainout,typet)
+        create_multinli_with_prem_first_score(train_merged,trainout+"_score",typet)
+    dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+    dev_merged = create_unmerged_facts_map(dev_df)
+    dev_merged = create_reranked_umap(dev_merged)
+    create_multinli_with_prem_first(dev_merged,devout,typet)
+    create_multinli_with_prem_first_score(dev_merged,devout+"_score",typet)
+
+
+def create_multinli_cont_score(train_fn,dev_fn,trainout,devout,typet,no_train=False):
+    if not no_train:
+        train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+        train_merged = create_unmerged_facts_map(train_df)
+        train_merged = create_reranked_umap(train_merged)
+        create_multinli_with_prem_first_score(train_merged,trainout,typet)
+    dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+    dev_merged = create_unmerged_facts_map(dev_df)
+    dev_merged = create_reranked_umap(dev_merged)
+    create_multinli_with_prem_first_score(dev_merged,devout,typet)
+
 def create_multinli_knowledge(train_fn,dev_fn,trainout,devout,typet,no_train=False):
     if not no_train:
         train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
@@ -311,19 +430,65 @@ def create_multinli_data(merged_map,fname,typet):
             passage = row['passage']
             choices = [passage + " . " + row['answerlist'][0],passage + " . " + row['answerlist'][1],passage + " . " + row['answerlist'][2]]
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":0})
+
+def create_multinli_with_prem_first(merged_map,fname,typet,reranked=False):
+    with jsonlines.open(fname+".jsonl", mode='w') as writer:
+        for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
+
+            passage = row['passage']
+
+            if reranked:
+                facts = [[passage],[passage],[passage]]
+                facts[0].extend( [tup[0] + " . "+passage for tup in row['facts']['0'][0:10]])
+                facts[1].extend( [tup[0] + " . "+passage for tup in row['facts']['1'][0:10]])
+                facts[2].extend( [tup[0] + " . "+passage for tup in row['facts']['2'][0:10]])
+            else:
+                allfacts = [passage]
+                allfacts.extend([tup[0] + " . "+passage for tup in row['facts'][0:10]])
+                facts = [allfacts,allfacts,allfacts]
+
+
+            choices = row['answerlist']
+            writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
+
+def append_context(tup,passage):
+    return [tup[0] + " . "+passage,tup[1]]
+
+def create_multinli_with_prem_first_score(merged_map,fname,typet,reranked=False):
+    with jsonlines.open(fname+".jsonl", mode='w') as writer:
+        for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
+
+            passage = row['passage']
+            context = passage.split(" . ")[0]
+            question = passage.split(" . ")[1]
+
+            if reranked:
+                facts = [[[passage,1]],[[passage,1]],[[passage,1]]]
+                facts[0].extend([append_context(tup,passage) for tup in row['facts']['0'][0:10]])
+                facts[1].extend([append_context(tup,passage) for tup in row['facts']['1'][0:10]])
+                facts[2].extend([append_context(tup,passage) for tup in row['facts']['2'][0:10]])
+            else:
+                allfacts = [[passage,1]]
+                allfacts.extend([append_context(tup,passage) for tup in row['facts'][0:10]])
+                facts = [allfacts,allfacts,allfacts]
+
+            choices = row['answerlist']
+            writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
   
+
 def create_multinli_data_knowledge(merged_map,fname,typet):
     with jsonlines.open(fname+".jsonl", mode='w') as writer:
         for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
             passage = row['passage']
             facts = []
-            facts.extend( [tup[0] + passage for tup in row['facts']['0']])
-            facts.extend( [tup[0] + passage for tup in row['facts']['1']])
-            facts.extend( [tup[0] + passage for tup in row['facts']['2']])
+            facts.extend( [tup[0] for tup in row['facts']['0'][0:20]])
+            facts.extend( [tup[0] for tup in row['facts']['1'][0:20]])
+            facts.extend( [tup[0] for tup in row['facts']['2'][0:20]])
             choices = [row['answerlist'][0],row['answerlist'][1],row['answerlist'][2]]
             for fix,fact in enumerate(set(facts)):
                 nqidx = qidx+":"+str(fix)
-                writer.write({"id":qidx,"premises":[fact,fact,fact],"choices":choices,"gold_label":row['label']})          
+                f1 = fact + " " + passage
+                writer.write({"id":nqidx,"fact":fact,"passage":passage,"premises":[[f1],[f1],[f1]],"choices":choices,"gold_label":row['label']})        
             
 def create_multinli_data_unique(merged_map,fname,typet):
     with jsonlines.open("../data/"+typet+"/"+fname+".jsonl", mode='w') as writer:
@@ -404,4 +569,13 @@ if __name__ == "__main__":
         create_multinli("","dev_ir.tsv.out","","dev","",no_train=True)
     elif typet == "lemma_knowledge":
         create_multinli_knowledge("train_ir.tsv.out","dev_ir.tsv.out","train","dev","")
+    elif typet == "with_perm":
+        create_multinli_cont("train_ir.tsv.out","dev_ir.tsv.out","train_perm","dev_perm","")
+    elif typet == "merged_data":
+        create_merged_datasets("train_ir.tsv.out","dev_ir.tsv.out","train_max","dev_max","",rerank=False,mtype="max")
+        create_merged_datasets("train_ir.tsv.out","dev_ir.tsv.out","train_sum","dev_sum","",rerank=False,mtype="sum")
+        create_merged_datasets("train_ir.tsv.out","dev_ir.tsv.out","train_weighted","dev_weighted","",rerank=False,mtype="weighted")
+    elif typet == "merged_rr":
+        create_merged_datasets_rr("train_ir.tsv.out","dev_ir.tsv.out","train_rr","dev_rr","")
+
 
