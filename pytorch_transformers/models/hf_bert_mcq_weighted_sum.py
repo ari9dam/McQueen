@@ -57,16 +57,19 @@ class BertMCQWeightedSum(BertPreTrainedModel):
         flat_attention_mask = input_mask.view(-1, input_mask.size(-1))
 
         # shape: batch_size*num_choices*max_premise_perchoice, hidden_dim
-        _, pooled_ph = self.bert(input_ids=flat_input_ids,
+        _, pooled_ph, attn = self.bert(input_ids=flat_input_ids,
                                        token_type_ids=flat_token_type_ids,
                                        attention_mask=flat_attention_mask)
-
         pooled_ph = self._dropout(pooled_ph)
+        print ("pooled_ph:",pooled_ph.size())
         pooled_ph  = pooled_ph.view(-1,input_ids.size(2),pooled_ph.size(1))
+        print ("pooled_ph->",pooled_ph.size())
         # apply weighting layer
         weights = self._weight_layer(pooled_ph)
         weights = weights.view(-1,input_ids.size(2))
         weights = torch.nn.functional.softmax(weights, dim=-1)
+        print ("weights:",weights.detach().numpy().tolist())
+        print (weights.size())
         # multiply each element by the corresponding scores
         weighted_ph = pooled_ph * weights.unsqueeze(-1)
 
@@ -84,6 +87,8 @@ class BertMCQWeightedSum(BertPreTrainedModel):
 
         #apply classification layer
         logits = self._classification_layer(weighted_ph)
+        print("weighted:",weighted_ph.size())
+        print ("logits:",logits.size())
 
         if debug:
             print(f"logits.size() = {logits.size()}")
@@ -102,7 +107,7 @@ class BertMCQWeightedSum(BertPreTrainedModel):
             loss = loss_fct(reshaped_logits, labels)
             outputs = (loss,) + outputs
 
-        return outputs  # (loss, reshaped_logits, prob)
+        return outputs, attn  # (loss, reshaped_logits, prob)
 
 
 
