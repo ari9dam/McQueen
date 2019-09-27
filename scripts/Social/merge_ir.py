@@ -232,16 +232,17 @@ def create_merged_datasets_rr(train_fn,dev_fn,trainout,devout,typet):
     dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
 
     for mtype,merge_func in fmerged.items():
-        trainout = trainout+"_"+mtype 
+        trainout1 = trainout+"_"+mtype 
+        devout1 = devout + "_" + mtype
         merge_func = fmerged[mtype]
         train_merged = merge_func(train_df)
         train_merged = create_reranked_map(train_merged)
-        create_multinli_with_prem_first(train_merged,trainout,typet)
-        create_multinli_with_prem_first_score(train_merged,trainout+"_score",typet)
+        create_multinli_with_prem_first(train_merged,trainout1,typet)
+        create_multinli_with_prem_first_score(train_merged,trainout1+"_score",typet)
         dev_merged = merge_func(dev_df)
         dev_merged = create_reranked_map(dev_merged)
-        create_multinli_with_prem_first(dev_merged,devout,typet)
-        create_multinli_with_prem_first_score(dev_merged,devout+"_score",typet)
+        create_multinli_with_prem_first(dev_merged,devout1,typet)
+        create_multinli_with_prem_first_score(dev_merged,devout1+"_score",typet)
 
 
     
