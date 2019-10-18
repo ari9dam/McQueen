@@ -14,10 +14,13 @@ from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler)
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 from pytorch_transformers.file_utils import PYTORCH_PRETRAINED_BERT_CACHE
-from pytorch_transformers import WEIGHTS_NAME, CONFIG_NAME
+from pytorch_transformers import WEIGHTS_NAME, CONFIG_NAME, RobertaConfig
 from pytorch_transformers.modeling_bert import BertModel
 from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
+
 from pytorch_transformers.tokenization_bert import BertTokenizer
+from pytorch_transformers.tokenization_roberta import RobertaTokenizer
+
 from hf_bert_mcq_parallel_reader import BertMCQParallelReader
 from hf_bert_mcq_parallel import BertMCQParallel
 from util import cleanup_global_logging,prepare_global_logging
@@ -27,6 +30,18 @@ from hf_bert_mcq_weighted_sum import BertMCQWeightedSum
 from hf_bert_mcq_simple_sum import BertMCQSimpleSum
 from hf_bert_mcq_mac import BertMCQMAC
 
+from hf_roberta_mcq_concat import RoBertaMCQConcat
+from hf_roberta_mcq_concat_reader import RoBertaMCQConcatReader
+from hf_roberta_mcq_weighted_sum import RoBertaMCQWeightedSum
+from hf_roberta_mcq_simple_sum import RoBertaMCQSimpleSum
+from hf_roberta_mcq_mac import RoBertaMCQMAC
+from hf_roberta_mcq_parallel_reader import RoBertaMCQParallelReader
+from hf_roberta_mcq_parallel import RoBertaMCQParallel
+
+from hf_roberta_mcq_reader_with_score import RoBertaMCQParallelScoreReader
+from hf_roberta_mcq_ss_score import RoBertaMCQSimpleSumScore
+from hf_roberta_mcq_ws_score import RoBertaMCQWeightedSumScore
+
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
@@ -35,6 +50,10 @@ MODELS = {
     "mcq_parallel": (BertModel, BertMCQParallelReader)
 }
 
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return (e_x / e_x.sum()).tolist()
 
 def accuracy(out, labels):
     outputs = np.argmax(out, axis=1)
@@ -89,7 +108,7 @@ def main():
                         action='store_true',
                         help="Set this flag if you are using an uncased model.")
     parser.add_argument("--eval_batch_size",
-                        default=32,
+                        default=16,
                         type=int,
                         help="Total batch size for eval.")
     parser.add_argument("--no_cuda",
@@ -114,6 +133,10 @@ def main():
     parser.add_argument('--tie_weights_weighted_sum',
                         action='store_true',
                         help="Whether to tie the weights for the weighted sum model")
+    parser.add_argument('--with_score', action='store_true',
+                        help="Knowledge with score is provided")
+    parser.add_argument('--stamp_weights', action='store_true',
+                       help = "Ignores premises with weights less than 0.1")
     
     args = parser.parse_args()
 
@@ -131,7 +154,13 @@ def main():
     if n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
-    tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+    if "roberta" in args.bert_model:
+        tokenizer = RobertaTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+        logger.info("Type of Tokenizer : ROBERTA")
+    else:
+        tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+        logger.info("Type of Tokenizer : BERT")    
+    
     data_reader = None
         
     if args.mcq_model == 'bert-mcq-parallel-max':
@@ -152,7 +181,6 @@ def main():
         data_reader = BertMCQParallelReader()
     elif args.mcq_model == 'bert-mcq-simple-sum':
         model = BertMCQSimpleSum.from_pretrained(args.model_dir,
-
                                                    cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                           'distributed_{}'.format(args.local_rank)))
         data_reader = BertMCQParallelReader()
@@ -161,6 +189,49 @@ def main():
                                                    cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                           'distributed_{}'.format(args.local_rank)))
         data_reader = BertMCQParallelReader()
+    elif args.mcq_model == 'roberta-mcq-parallel-max':
+        model = RoBertaMCQParallel.from_pretrained(args.model_dir,
+                                                cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                       'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelReader()
+    elif args.mcq_model == 'roberta-mcq-concat':
+        model = RoBertaMCQConcat.from_pretrained(args.model_dir,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQConcatReader()
+        
+    elif args.mcq_model == 'roberta-mcq-weighted-sum':
+        model = RoBertaMCQWeightedSum.from_pretrained(args.model_dir,
+                                                   tie_weights = args.tie_weights_weighted_sum,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelReader()
+        
+    elif args.mcq_model == 'roberta-mcq-ws-score':
+        model = RoBertaMCQWeightedSumScore.from_pretrained(args.model_dir,
+                                                   tie_weights = args.tie_weights_weighted_sum,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelScoreReader()
+        
+    elif args.mcq_model == 'roberta-mcq-simple-sum':
+        model = RoBertaMCQSimpleSum.from_pretrained(args.model_dir,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelReader()
+        
+    elif args.mcq_model == 'roberta-mcq-ss-score':
+        model = RoBertaMCQSimpleSumScore.from_pretrained(args.model_dir,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelScoreReader()
+        
+    elif args.mcq_model == 'roberta-mcq-mac':
+        model = RoBertaMCQMAC.from_pretrained(args.model_dir,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelReader()
+        
     else:
         logger.error(f"Invalid MCQ model name {args.mcq_model}")
         exit(0)
@@ -225,8 +296,8 @@ def main():
 
             etq.set_description(_get_loss_accuracy(eval_loss / nb_eval_steps, eval_accuracy / nb_eval_examples))
 
-            eval_loss = eval_loss / nb_eval_steps
-            eval_accuracy = eval_accuracy / nb_eval_examples
+    eval_loss = eval_loss / nb_eval_steps
+    eval_accuracy = eval_accuracy / nb_eval_examples
 
     cleanup_global_logging(stdout_handler)
     output_score_file = os.path.join(args.output_data_path,"score_file.txt")
@@ -234,7 +305,7 @@ def main():
     output_with_labels = os.path.join(args.output_data_path,"pred_labels.txt")
     with open(output_score_file, "w") as scorefile:
         for score in scores:
-            scorefile.write(str(score)+"\n")
+            scorefile.write(str(softmax(score))+"\n")
     with open(output_only_preds,"w") as onlypreds, open(output_with_labels,"w") as predlabels:
         for pred,label in zip(prediction_list,gold_labels):
             onlypreds.write(str(pred)+"\n")
