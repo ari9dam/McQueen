@@ -1,7 +1,10 @@
 # <img src="mcqueen.jpg" width="60"> Introduction
-McQueen is a MCQ solving library that allows researchers and developers to train and test several existing MCQ solvers on custom textual mcq datasets. McQueen is written in **[AllenNLP](https://github.com/allenai/allennlp)**
+McQueen is a MCQ solving library that allows researchers and developers to train and test several existing MCQ solvers on custom textual mcq datasets. Related Paper: [Exploring ways to incorporate additional knowledge to improve Natural
+Language Commonsense Question Answering](https://arxiv.org/pdf/1909.08855.pdf)
+ 
 
 ## Package Overview
+<!--
 ### AllenNLP Modules
 <table>
 <tr>
@@ -49,7 +52,7 @@ McQueen is a MCQ solving library that allows researchers and developers to train
     <td> implements the MacSeq model described in the paper </td>
 </tr>
 </table>
-
+-->
 ### HuggingFace Modules
 <table>
 <tr>
