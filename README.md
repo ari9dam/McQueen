@@ -78,8 +78,7 @@ To run the huggingface models
 1. conda create --name env-name python=3.6
 2. source activate env-name
 3. pip install pytorch-transformers
-4. git checkout the repo in your agave host
-5. run launch gpu to get a host with multiple gpus 
+4. git checkout the repo
     
  # Training
  The training data should be in the format that is mentioned in the [doc](https://docs.google.com/document/d/1asswWYl_qG3sA97IMrv25k46Ueu4ujysDls6vIUX6Jk/)
