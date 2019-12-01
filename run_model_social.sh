@@ -2,12 +2,9 @@
 
 set -e
 
-
 cp scripts/Social/* .
 
-pip install -r requirements.txt
-
-pip install elasticsearch elasticsearch-dsl
+pip install elasticsearch elasticsearch-dsl  --no-cache-dir
 
 /etc/init.d/elasticsearch start
 
@@ -15,9 +12,9 @@ sleep 15
 
 cat atomic_knowledge_sentences.txt | python insert_text_to_elasticsearch_lemmatized.py
 
-#python preprare_dataset.py /data/socialiqa.jsonl
+python preprare_dataset.py /data/socialiqa.jsonl
 
-python preprare_dataset.py scripts/Social/val.jsonl
+# python preprare_dataset.py scripts/Social/val.jsonl
 
 # IR
 python ir_from_aristo_lemmatized.py dev_ir_lemma.tsv
@@ -37,7 +34,6 @@ tar -zxvf trained_models/soc_rob.tar
 
 
 python pytorch_transformers/models/hf_scorer.py --input_data_path dev_typed.jsonl   --max_number_premises 1 --max_seq_length 80 --eval_batch_size 1 --model_dir scratch/pbanerj6/social/robert_large_social_wstw_typ_16_5e6_1wtd_wm06  --bert_model roberta-large --mcq_model roberta-mcq-weighted-sum  --output_data_path .
-
 
 python fix_preds.py
 
