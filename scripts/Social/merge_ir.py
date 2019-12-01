@@ -6,11 +6,20 @@ import pickle
 import spacy
 import sys
 import jsonlines
+import torch
 
 
 
 print("Loading Spacy")
 nlp = spacy.load('en_core_web_lg',disable=["ner","parser","tagger"])
+
+# print("Loading GPU Spacy")
+is_using_gpu = spacy.prefer_gpu()
+print(f"Using GPU:{is_using_gpu}")
+# if is_using_gpu:
+#     torch.set_default_tensor_type("torch.cuda.FloatTensor")
+# nlp = spacy.load("en_pytt_bertbaseuncased_lg")
+
 
 import nltk
 from nltk.corpus import stopwords
@@ -25,6 +34,8 @@ def load_doc_map(path_to_docmap):
 print("Loading DocMap")
 # docmap = load_doc_map("/home/pbanerj6/github/socialiqa/notebooks/redocmap.pickled")
 docmap={}
+
+f_f_sim_map = {}
 
 def get_doc(docs):
     if docs in docmap:
@@ -93,6 +104,7 @@ def create_merged_facts_map(df):
     for qid in tqdm(merged_map.keys(),desc="Sorting:"):
         sorted_merged_map[qid]=merged_map[qid]
         sorted_merged_map[qid]['facts'] = list(sorted(merged_map[qid]['facts'].items(), key=operator.itemgetter(1),reverse=True))
+    
     return sorted_merged_map
 
 def create_merged_facts_map_add(df):
@@ -120,6 +132,7 @@ def create_merged_facts_map_add(df):
     for qid in tqdm(merged_map.keys(),desc="Sorting:"):
         sorted_merged_map[qid]=merged_map[qid]
         sorted_merged_map[qid]['facts'] = list(sorted(merged_map[qid]['facts'].items(), key=operator.itemgetter(1),reverse=True))
+    
     return sorted_merged_map
 
 def create_merged_facts_map_weighted(df):
@@ -150,6 +163,7 @@ def create_merged_facts_map_weighted(df):
     for qid in tqdm(merged_map.keys(),desc="Sorting:"):
         sorted_merged_map[qid]=merged_map[qid]
         sorted_merged_map[qid]['facts'] = list(sorted(merged_map[qid]['facts'].items(), key=operator.itemgetter(1),reverse=True))
+    
     return sorted_merged_map
 
 def create_unmerged_facts_map(df,filter=False):
@@ -235,16 +249,29 @@ def create_merged_datasets_rr(train_fn,dev_fn,trainout,devout,typet):
         trainout1 = trainout+"_"+mtype 
         devout1 = devout + "_" + mtype
         merge_func = fmerged[mtype]
-        train_merged = merge_func(train_df)
-        train_merged = create_reranked_map(train_merged)
-        create_multinli_with_prem_first(train_merged,trainout1,typet)
-        create_multinli_with_prem_first_score(train_merged,trainout1+"_score",typet)
+#         train_merged = merge_func(train_df)
+#         train_merged = create_reranked_map(train_merged)
+#         create_multinli_with_prem_first(train_merged,trainout1,typet)
+#         create_multinli_with_prem_first_score(train_merged,trainout1+"_score",typet)
         dev_merged = merge_func(dev_df)
         dev_merged = create_reranked_map(dev_merged)
         create_multinli_with_prem_first(dev_merged,devout1,typet)
         create_multinli_with_prem_first_score(dev_merged,devout1+"_score",typet)
 
-
+        
+def create_max_merged_rr(train_fn,dev_fn,trainout,devout,typet):
+    train_df = pd.read_csv(train_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+    dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+    train_merged = create_merged_facts_map(train_df)
+    train_merged = create_reranked_map(train_merged)
+    create_ranking_dataset(train_merged,trainout,typet,max_prems=18)
+    dev_merged=create_merged_facts_map(dev_df)
+    dev_merged = create_reranked_map(dev_merged)
+    create_ranking_dataset(dev_merged,devout,typet,max_prems=18)
+    
+        
+def avg(ls):
+    return sum(ls)/len(ls)
     
 def rerank_using_spacy(row,topk=20,choice=None):
     passage = row['passage']
@@ -264,10 +291,15 @@ def rerank_using_spacy(row,topk=20,choice=None):
         return facts
     
     reranked_facts = {}
-    for fact_tup in facts:
+    
+    flimit = len(facts)
+#     if is_using_gpu:
+#         flimit = 30
+    
+    for fact_tup in facts[0:flimit]:
         fact_doc = get_doc(fact_tup[0])
         if not choice:
-            new_score= max(fact_doc.similarity(query_doc0),fact_doc.similarity(query_doc1),fact_doc.similarity(query_doc2))*fact_tup[1]
+            new_score = max([fact_doc.similarity(query_doc0),fact_doc.similarity(query_doc1),fact_doc.similarity(query_doc2)])*fact_tup[1]
         else:
             new_score = fact_doc.similarity(query_doc)
         reranked_facts[fact_tup[0]]=new_score
@@ -432,25 +464,44 @@ def create_multinli_data(merged_map,fname,typet):
             choices = [passage + " . " + row['answerlist'][0],passage + " . " + row['answerlist'][1],passage + " . " + row['answerlist'][2]]
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":0})
 
-def create_multinli_with_prem_first(merged_map,fname,typet,reranked=False):
+def create_multinli_with_prem_first(merged_map,fname,typet,reranked=False,max_prems=10,add_quesn=True):
     with jsonlines.open(fname+".jsonl", mode='w') as writer:
         for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
 
             passage = row['passage']
 
             if reranked:
-                facts = [[passage],[passage],[passage]]
-                facts[0].extend( [tup[0] + " . "+passage for tup in row['facts']['0'][0:10]])
-                facts[1].extend( [tup[0] + " . "+passage for tup in row['facts']['1'][0:10]])
-                facts[2].extend( [tup[0] + " . "+passage for tup in row['facts']['2'][0:10]])
+                if add_quesn:
+                    facts = [[passage],[passage],[passage]]
+                else:
+                    facts = [[],[],[]]
+                facts[0].extend( [tup[0] + " . "+passage for tup in row['facts']['0'][0:max_prems]])
+                facts[1].extend( [tup[0] + " . "+passage for tup in row['facts']['1'][0:max_prems]])
+                facts[2].extend( [tup[0] + " . "+passage for tup in row['facts']['2'][0:max_prems]])
             else:
-                allfacts = [passage]
-                allfacts.extend([tup[0] + " . "+passage for tup in row['facts'][0:10]])
+                if add_quesn:
+                    allfacts = [passage]
+                else:
+                    allfacts = []
+                allfacts.extend([tup[0] + " . "+passage for tup in row['facts'][0:max_prems]])
                 facts = [allfacts,allfacts,allfacts]
 
 
             choices = row['answerlist']
             writer.write({"id":qidx,"premises":facts,"choices":choices,"gold_label":row['label']})
+            
+            
+def create_ranking_dataset(merged_map,fname,typet,max_prems=18):
+    labels = [0]*max_prems
+    with jsonlines.open(fname+".jsonl", mode='w') as writer:
+        for qidx,row in tqdm(merged_map.items(),desc="Writing Ranking Datasets:"):
+            passage = row['passage']
+            choices = row['answerlist']
+            facts = [tup[0] for tup in row['facts'][0:max_prems]]
+            choice_str = ' | '.join(choices)
+            premise = passage + " . " + choice_str
+            writer.write({"id":qidx,"context":premise,"facts":facts,"flabels":labels,"choices":row['answerlist'],"premise":passage,"label":row["label"]})
+            
 
 def append_context(tup,passage):
     return [tup[0] + " . "+passage,tup[1]]
@@ -541,6 +592,41 @@ if __name__ == "__main__":
     #         docmap[fact]=doc
     
     typet = sys.argv[1]
+    
+#     if typet == "generate_exp_exp_map":
+        
+#         train_df = pd.read_csv("train_ir.tsv.out",delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+#         dev_df =   pd.read_csv("dev_ir.tsv.out",delimiter="\t",names=['qid','passage','answer','label','irkeys','irfacts'])
+#         train_merged = create_merged_facts_map(train_df)
+#         dev_merged = create_merged_facts_map(dev_df)
+        
+#         fact_strs = []
+    
+#         for qid in tqdm(train_merged.keys(),desc="Facts from Train:"):
+#             facts = train_merged[qid]['facts']
+#             for fact in facts:
+#                 fact_strs.append(fact[0])
+                
+#         for qid in tqdm(dev_merged.keys(),desc="Facts from Dev:"):
+#             facts = dev_merged[qid]['facts']
+#             for fact in facts:
+#                 fact_strs.append(fact[0])
+                
+#         fact_strs = list(set(fact_strs))
+                
+#         print("Total Unique:",len(fact_strs))
+                
+#         fact_docs = nlp.pipe(fact_strs,batch_size=100)
+        
+#         for f1,doc1 in tqdm(zip(fact_strs,fact_docs),desc="Scoring Similarity:"):
+#             f_f_sim_map[f1]={}
+#             for f2,doc2 in tqdm(zip(fact_strs,fact_docs),desc="Inner Loop"):
+#                 f_f_sim_map[f1][f2]=doc1.similarity(doc2)
+#             torch.cuda.empty_cache()
+        
+#         save_maps("fact_fact_map.pickled",f_f_sim_map)
+#         sys.exit(0)
+        
 
     if typet == 'swag_simple':
         create_reranked_s("../data/simple_ir/train-ir.tsv.out","../data/simple_ir/dev-ir.tsv.out","train_swag_rr.tsv","dev_swag_rr.tsv","simple_ir")
@@ -578,5 +664,7 @@ if __name__ == "__main__":
         create_merged_datasets("train_ir.tsv.out","dev_ir.tsv.out","train_weighted","dev_weighted","",rerank=False,mtype="weighted")
     elif typet == "merged_rr":
         create_merged_datasets_rr("train_ir.tsv.out","dev_ir.tsv.out","train_rr","dev_rr","")
+    elif typet == "ranking_d":
+        create_max_merged_rr("train_ir.tsv.out","dev_ir.tsv.out","train_rr","dev_rr","")
 
 

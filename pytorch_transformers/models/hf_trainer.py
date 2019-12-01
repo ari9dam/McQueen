@@ -30,15 +30,18 @@ from hf_bert_mcq_weighted_sum import BertMCQWeightedSum
 from hf_bert_mcq_simple_sum import BertMCQSimpleSum
 from hf_bert_mcq_mac import BertMCQMAC
 
-
 from hf_roberta_mcq_concat import RoBertaMCQConcat
 from hf_roberta_mcq_concat_reader import RoBertaMCQConcatReader
 from hf_roberta_mcq_weighted_sum import RoBertaMCQWeightedSum
+from hf_roberta_mcq_conv3d import RoBertaMCQConv3d
 from hf_roberta_mcq_simple_sum import RoBertaMCQSimpleSum
 from hf_roberta_mcq_mac import RoBertaMCQMAC
 from hf_roberta_mcq_parallel_reader import RoBertaMCQParallelReader
 from hf_roberta_mcq_parallel import RoBertaMCQParallel
 
+from hf_roberta_mcq_reader_with_score import RoBertaMCQParallelScoreReader
+from hf_roberta_mcq_ss_score import RoBertaMCQSimpleSumScore
+from hf_roberta_mcq_ws_score import RoBertaMCQWeightedSumScore
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -177,6 +180,9 @@ def main():
                         help="Number of labels")
     parser.add_argument('--overwrite_output_dir', action='store_true',
                         help="Overwrite the content of the output directory")
+    parser.add_argument('--with_score', action='store_true',
+                        help="Knowledge with score is provided")
+    
     args = parser.parse_args()
 
     if args.local_rank == -1 or args.no_cuda:
@@ -221,7 +227,7 @@ def main():
         torch.cuda.manual_seed_all(args.seed)
 
     if "roberta" in args.bert_model:
-        tokenizer = RobertaTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+        tokenizer = RobertaTokenizer.from_pretrained("roberta-large", do_lower_case=args.do_lower_case)
         logger.info("Type of Tokenizer : ROBERTA")
     else:
         tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
@@ -273,18 +279,35 @@ def main():
                                                                           'distributed_{}'.format(args.local_rank)))
         data_reader = RoBertaMCQParallelReader()
         
+    elif args.mcq_model == 'roberta-mcq-ws-score':
+        model = RoBertaMCQWeightedSumScore.from_pretrained(args.bert_model,
+                                                   tie_weights = args.tie_weights_weighted_sum,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelScoreReader()
+        
     elif args.mcq_model == 'roberta-mcq-simple-sum':
         model = RoBertaMCQSimpleSum.from_pretrained(args.bert_model,
                                                    cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                           'distributed_{}'.format(args.local_rank)))
         data_reader = RoBertaMCQParallelReader()
         
+    elif args.mcq_model == 'roberta-mcq-ss-score':
+        model = RoBertaMCQSimpleSumScore.from_pretrained(args.bert_model,
+                                                   cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelScoreReader()
+        
     elif args.mcq_model == 'roberta-mcq-mac':
         model = RoBertaMCQMAC.from_pretrained(args.bert_model,
                                                    cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                           'distributed_{}'.format(args.local_rank)))
         data_reader = RoBertaMCQParallelReader()
-        
+    elif args.mcq_model == 'roberta-mcq-conv3d':
+        model = RoBertaMCQConv3d.from_pretrained(args.bert_model,
+                                                cache_dir=os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
+                                                                          'distributed_{}'.format(args.local_rank)))
+        data_reader = RoBertaMCQParallelReader()
     else:
         logger.error(f"Invalid MCQ model name {args.mcq_model}")
         exit(0)
@@ -370,8 +393,12 @@ def main():
             acc = 0
             for step, batch in enumerate(tq):
                 batch = tuple(t.to(device) for t in batch)
-                input_ids, segment_ids, input_mask, label_ids = batch
-                outputs = model(input_ids, segment_ids, input_mask, label_ids)
+                if not args.with_score:
+                    input_ids, segment_ids, input_mask, label_ids = batch
+                    outputs = model(input_ids, segment_ids, input_mask, label_ids)
+                else:
+                    input_ids, segment_ids, input_mask,scores, label_ids = batch
+                    outputs = model(input_ids, segment_ids, input_mask,scores, label_ids)
                 loss = outputs[0]
                 logits = outputs[1]
                 logits = logits.detach().cpu().numpy()
@@ -413,14 +440,17 @@ def main():
                     eval_loss, eval_accuracy = 0, 0
                     nb_eval_steps, nb_eval_examples = 0, 0
                     etq = tqdm(eval_dataloader, desc="Validating")
-                    for input_ids, segment_ids, input_mask, label_ids in etq:
-                        input_ids = input_ids.to(device)
-                        input_mask = input_mask.to(device)
-                        segment_ids = segment_ids.to(device)
-                        label_ids = label_ids.to(device)
-
+                    for batch in etq:
+                        batch = tuple(t.to(device) for t in batch)
+            
                         with torch.no_grad():
-                            outputs = model(input_ids, segment_ids, input_mask, label_ids)
+                            if not args.with_score:
+                                input_ids, segment_ids, input_mask, label_ids = batch
+                                outputs = model(input_ids, segment_ids, input_mask, label_ids)
+                            else:
+                                input_ids, segment_ids, input_mask, scores, label_ids = batch
+                                outputs = model(input_ids, segment_ids, input_mask, scores, label_ids)
+
                             tmp_eval_loss = outputs[0]
                             logits = outputs[1]
 
@@ -439,6 +469,7 @@ def main():
 
                     eval_loss = eval_loss / nb_eval_steps
                     eval_accuracy = eval_accuracy / nb_eval_examples
+                    
                     logger.info(f"epoch, step | {epoch_index}, {step}")
                     logger.info("            |   Training |  Validation")
                     logger.info("accuracy    |   %.4f"%(acc / nb_tr_examples)+
@@ -464,6 +495,7 @@ def main():
                         model_to_save.config.to_json_file(output_config_file)
                         tokenizer.save_vocabulary(args.output_dir)
                 model.train()
+                
             epoch_end_time = time.time()
             logger.info(f"time it took to finish the epoch {epoch_index} of {args.num_train_epochs} is "
                         + _show_runtime(epoch_end_time - epoch_start_time))

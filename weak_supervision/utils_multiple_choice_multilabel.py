@@ -175,7 +175,7 @@ class RankingProcessor(DataProcessor):
     def get_test_examples(self, data_dir):
         """See base class."""
         logger.info("LOOKING AT {} test".format(data_dir))
-        return self._create_examples(self._read_json(os.path.join(data_dir, "test.csv")), "test")
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test_mcml.jsonl")), "test")
 
     def get_labels(self):
         """See base class."""
@@ -194,7 +194,50 @@ class RankingProcessor(DataProcessor):
             InputExample(
                 example_id=line["idx"],
                 question="",  
-                contexts = [line["premise"]]*10,
+                contexts = [line["context"]]*len(line["facts"]),
+                endings = line["facts"],
+                label=line["flabels"]
+            ) for line in lines 
+        ]
+
+        return examples
+
+class RankingProcessor2(DataProcessor):
+    """Processor for the MRPC data set (GLUE version)."""
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        logger.info("LOOKING AT {} train".format(data_dir))
+        return self._create_examples(self._read_json(os.path.join(data_dir, "train_mcml.jsonl")), "train")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        logger.info("LOOKING AT {} dev".format(data_dir))
+        return self._create_examples(self._read_json(os.path.join(data_dir, "dev_mcml.jsonl")), "dev")
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        logger.info("LOOKING AT {} test".format(data_dir))
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test_mcml.jsonl")), "test")
+
+    def get_labels(self):
+        """See base class."""
+        return ["0", "1"]
+
+    def _read_json(self, input_file):
+        with jsonlines.open(input_file) as f:
+            lines = [line for line in f]
+            return lines
+
+
+    def _create_examples(self, lines, type):
+        """Creates examples for the training and dev sets."""
+
+        examples = [
+            InputExample(
+                example_id=line["idx"],
+                question="",  
+                contexts = [line["premise"]]*len(line["choices"]),
                 endings = line["choices"],
                 label=line["labels"]
             ) for line in lines 
@@ -458,7 +501,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
                 logger.info("input_ids: {}".format(' '.join(map(str, input_ids))))
                 logger.info("input_mask: {}".format(' '.join(map(str, input_mask))))
                 logger.info("segment_ids: {}".format(' '.join(map(str, segment_ids))))
-                logger.info("label: {}".format(label))
+                logger.info("label: {}".format(labels_ids[choice_idx]))
 
         features.append(
             InputFeatures(
@@ -493,7 +536,8 @@ processors = {
     "race": RaceProcessor,
     "swag": SwagProcessor,
     "arc": ArcProcessor,
-    "rank": RankingProcessor
+    "rank": RankingProcessor,
+    "rank2": RankingProcessor2
 }
 
 
@@ -501,5 +545,6 @@ GLUE_TASKS_NUM_LABELS = {
     "race", 4,
     "swag", 4,
     "arc", 4,
-    "rank", 2
+    "rank", 2,
+    "rank2", 2
 }

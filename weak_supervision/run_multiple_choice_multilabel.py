@@ -53,7 +53,7 @@ ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (
 
 
 class BertForMultipleChoice(BertPreTrainedModel):
-    def __init__(self, config,num_choices=1):
+    def __init__(self, config,num_choices=1,num_docs_rank=30):
         super(BertForMultipleChoice, self).__init__(config)
         
         self.num_choices = num_choices
@@ -97,20 +97,22 @@ class RobertaForMultipleChoice(BertPreTrainedModel):
     pretrained_model_archive_map = ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP
     base_model_prefix = "roberta"
 
-    def __init__(self, config,num_choices=1):
+    def __init__(self, config,num_choices=1,num_docs_rank=30):
         super(RobertaForMultipleChoice, self).__init__(config)
 
         self.num_choices = num_choices
         self.roberta = RobertaModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, num_choices)
-
+        
+        self.num_docs_rank = num_docs_rank
         self.apply(self.init_weights)
 
     def forward(self, input_ids, token_type_ids=None, attention_mask=None, labels=None,
                 position_ids=None, head_mask=None):
         num_choices = input_ids.shape[1]
 
+#        batch  * sentences * sentence_length 
         flat_input_ids = input_ids.view(-1, input_ids.size(-1))
         flat_position_ids = position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
         flat_token_type_ids = token_type_ids.view(-1, token_type_ids.size(-1)) if token_type_ids is not None else None
@@ -121,7 +123,7 @@ class RobertaForMultipleChoice(BertPreTrainedModel):
 
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
-        reshaped_logits = logits.view(-1, 10)
+        reshaped_logits = logits.view(-1, self.num_docs_rank)
 
         outputs = (reshaped_logits,) + outputs[2:]  # add hidden states and attention if they are here
 
@@ -136,7 +138,7 @@ class XLNetForMultipleChoice(XLNetPreTrainedModel):
     r"""
 
     """
-    def __init__(self, config,num_choices=1):
+    def __init__(self, config,num_choices=1,num_docs_rank=30):
         super(XLNetForMultipleChoice, self).__init__(config)
 
         self.num_choices = num_choices
@@ -200,7 +202,7 @@ def sigmoid_array(x):
 def accuracy_thresh(y_pred, y_true, thresh=0.5, sigmoid=True):
     if sigmoid: 
         y_pred = sigmoid_array(y_pred)    
-    match = ((y_pred>thresh)==y_true)
+    match = ((y_pred>thresh)==(y_true>thresh))
     sm = np.mean(match, axis=1).mean()
     return sm
 
@@ -399,6 +401,9 @@ def evaluate(args, model, tokenizer, prefix="", test=False):
 #         acc = simple_accuracy(preds, out_label_ids)
         acc=accuracy_thresh(preds,out_label_ids)
         
+        if test:
+            np.savetxt(fname=args.data_dir+"/test_scores.np",X=preds,delimiter=",")                
+        
         result = {"eval_acc": acc, "eval_loss": eval_loss}
         results.update(result)
 
@@ -496,7 +501,7 @@ def main():
                         help="Pretrained tokenizer name or path if not the same as model_name")
     parser.add_argument("--cache_dir", default="", type=str,
                         help="Where do you want to store the pre-trained models downloaded from s3")
-    parser.add_argument("--max_seq_length", default=128, type=int,
+    parser.add_argument("--max_seq_length", default=80, type=int,
                         help="The maximum total input sequence length after tokenization. Sequences longer "
                              "than this will be truncated, sequences shorter will be padded.")
     parser.add_argument("--do_train", action='store_true',
@@ -554,6 +559,17 @@ def main():
                         help="For distributed training: local_rank")
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
+    
+    parser.add_argument("--num_docs_rank", type=int, default=30,
+                        help="Number of docs to rank")
+    parser.add_argument("--do_score", action='store_true',
+                        help="Set this flag if you want to score")
+    parser.add_argument('--checkpoint', type=str, default='', help="Folder for checkpoint")
+    parser.add_argument('--fname', type=str, default='', help="Output file for scoring")
+    parser.add_argument('--scorefilename', type=str, default='', help="Output file for scoring")
+    parser.add_argument("--entail_label", type=int, default=1,
+                        help="Label for score output")
+    
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
@@ -604,7 +620,7 @@ def main():
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels, finetuning_task=args.task_name)
     tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path, do_lower_case=args.do_lower_case)
-    model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path), config=config)
+    model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path), config=config,num_docs_rank=args.num_docs_rank)
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
@@ -664,18 +680,18 @@ def main():
     if args.do_test and args.local_rank in [-1, 0]:
         if not args.do_train:
             args.output_dir = args.model_name_or_path
-        checkpoints = [args.output_dir]
-        if args.eval_all_checkpoints: #can not use this to do test!! just for different paras
-            checkpoints = list(os.path.dirname(c) for c in sorted(glob.glob(args.output_dir + '/**/' + WEIGHTS_NAME, recursive=True)))
-            logging.getLogger("pytorch_transformers.modeling_utils").setLevel(logging.WARN)  # Reduce logging
-        logger.info("Evaluate the following checkpoints: %s", checkpoints)
-        for checkpoint in checkpoints:
-            global_step = checkpoint.split('-')[-1] if len(checkpoints) > 1 else ""
-            model = model_class.from_pretrained(checkpoint)
-            model.to(args.device)
-            result = evaluate(args, model, tokenizer, prefix=global_step, test=True)
-            result = dict((k + '_{}'.format(global_step), v) for k, v in result.items())
-            results.update(result)
+        checkpoint = args.checkpoint
+        
+        logger.info("Evaluate the following checkpoints: %s", checkpoint)
+        global_step = checkpoint.split('-')[-1] 
+        model = model_class.from_pretrained(checkpoint)
+        model.to(args.device)
+        if args.n_gpu > 1:
+            model = torch.nn.DataParallel(model)
+        result = evaluate(args, model, tokenizer, prefix=global_step, test=True)
+        result = dict((k + '_{}'.format(global_step), v) for k, v in result.items())
+        results.update(result)
+
     if best_steps:
         logger.info("best steps of eval acc is the following checkpoints: %s", best_steps)
     return results

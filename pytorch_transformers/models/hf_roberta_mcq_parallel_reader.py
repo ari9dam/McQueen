@@ -153,7 +153,6 @@ class RoBertaMCQParallelReader:
         all_tokens = []
         all_segment_ids = []
         all_labels = []
-        max_number_premises = 0
         with open(file_path, 'r') as te_file:
             logger.info("Reading MCQ instances for 'bert mcq parallel' from jsonl dataset at: %s", file_path)
             for line in tqdm(te_file,desc="preparing dataset:"):
