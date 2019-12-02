@@ -28,7 +28,7 @@ python mergeIR.py preir_dev.tsv.out physical_merged_dev
 tar -zxvf trained_models/physical.tar 
 
 
-python pytorch_transformers/models/hf_scorer.py --max_seq_len 128 --input_data_path physical_merged_dev.jsonl   --eval_batch_size 1 --model_dir scratch/kkpal/physical/noq/tiedws_128_9e-6_10865  --bert_model bert-large-uncased-whole-word-masking --mcq_model bert-mcq-weighted-sum  --tie_weights_weighted_sum --output_data_path .
-
+#python pytorch_transformers/models/hf_scorer.py --max_seq_len 128 --input_data_path physical_merged_dev.jsonl   --eval_batch_size 1 --model_dir scratch/kkpal/physical/noq/tiedws_128_9e-6_10865  --bert_model bert-large-uncased-whole-word-masking --mcq_model bert-mcq-weighted-sum  --tie_weights_weighted_sum --output_data_path .
+python pytorch_transformers/models/hf_scorer.py --max_seq_len 128 --input_data_path physical_roberta_dev.jsonl   --eval_batch_size 32 --model_dir scratch/kkpal/k_tws_128_128_1e-5_40_prem5_fix  --bert_model roberta-large --mcq_model roberta-mcq-weighted-sum  --tie_weights_weighted_sum --output_data_path . --max_number_premises 5
 mv predictions.txt /results/predictions.lst
 
