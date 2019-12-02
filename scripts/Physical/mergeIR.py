@@ -146,19 +146,32 @@ def create_reranked_umap(unmap,topk=20):
 
 
 
-def create_kb_data_no_question(merged_map,fname,typet):
-#     with jsonlines.open("../../data/"+fname+".jsonl", mode='w') as writer:
-    with jsonlines.open(""+fname+".jsonl", mode='w') as writer:
+# def create_kb_data_no_question(merged_map,fname,typet):
+# #     with jsonlines.open("../../data/"+fname+".jsonl", mode='w') as writer:
+#     with jsonlines.open(""+fname+".jsonl", mode='w') as writer:
+#         for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
+#             facts = []
+#             facts.append( [tup[0] for tup in row['facts']['0'][0:10]])
+#             facts.append( [tup[0] for tup in row['facts']['1'][0:10]])
+# #             choices = row['answerlist']
+#             passage = row['passage']
+#             choices = [passage+" "+eachans for eachans in row['answerlist']]
+#             label = 1
+#             writer.write({"id":qidx,"question":[],"premises":facts,"choices":choices,"gold_label":label})
+#             # writer.write({"id":qidx,"question":[],"premises":facts,"choices":choices})
+
+def create_kb_roberta(merged_map,fname):
+    with jsonlines.open(fname+".jsonl", mode='w') as writer:
         for qidx,row in tqdm(merged_map.items(),desc="Writing PH:"):
             facts = []
-            facts.append( [tup[0] for tup in row['facts']['0'][0:10]])
-            facts.append( [tup[0] for tup in row['facts']['1'][0:10]])
-#             choices = row['answerlist']
             passage = row['passage']
-            choices = [passage+" "+eachans for eachans in row['answerlist']]
+            facts.append( [tup[0] +" . "+ passage for tup in row['facts']['0'][0:10]])
+            facts.append( [tup[0] +" . "+ passage for tup in row['facts']['1'][0:10]])
+#             choices = row['answerlist']
+            choices = [eachans for eachans in row['answerlist']]
+            #label = row['label']
             label = 1
-            writer.write({"id":qidx,"question":[],"premises":facts,"choices":choices,"gold_label":label})
-            # writer.write({"id":qidx,"question":[],"premises":facts,"choices":choices})
+            writer.write({"id":qidx,"question":"","premises":facts,"choices":choices,"gold_label":label})
             
             
 if __name__ == "__main__":
@@ -168,4 +181,5 @@ if __name__ == "__main__":
     dev_df = pd.read_csv(dev_fn,delimiter="\t",names=['qid','passage','answer','irkeys','irfacts'])
     dev_merged = create_unmerged_facts_map(dev_df)
     dev_merged_reranked = create_reranked_umap(dev_merged)
-    create_kb_data_no_question(dev_merged_reranked,outfilename,"")
+    # create_kb_data_no_question(dev_merged_reranked,outfilename,"")
+    create_kb_roberta(dev_merged_reranked,outfilename)
