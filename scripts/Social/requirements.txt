@@ -209,7 +209,7 @@ watchdog==0.9.0
 wcwidth==0.1.7
 webencodings==0.5.1
 websocket-client==0.56.0
-Werkzeug==0.15.1
+Werkzeug==0.15.3
 widgetsnbextension==3.4.2
 wrapt==1.10.11
 xgboost==0.82
