@@ -181,7 +181,7 @@ stop-words==2018.7.23
 tabulate==0.8.4
 tensorboard==1.13.1
 tensorboardX==1.2
-tensorflow==1.13.1
+tensorflow==2.5.1
 tensorflow-estimator==1.13.0
 tensorpack==0.9.4
 termcolor==1.1.0
